@@ -9,7 +9,7 @@ export async function sendValidationEmail(email, code) {
   }
   try {
     await resend.emails.send({
-      from: "yamamotto.ltda@gmail.com",
+      from: "contato@yama.ia.br",
       to: email,
       subject: "Código de verificação",
       html: `
