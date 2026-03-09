@@ -64,16 +64,14 @@ export const createUser = async (req, res) => {
         // Substituir o placeholder {{validationCode}} pelo código gerado
         html = html.replace("{{validationCode}}", validationCode);
 
-        // Enviar e-mail com o código de validação
-        try {
-            await sendEmail({
-                to: email,
-                subject: "Codigo de Validacao",
-                html,
-            });
-        } catch (emailError) {
+        // Enviar e-mail com o código de validação (em background, sem bloquear a resposta)
+        sendEmail({
+            to: email,
+            subject: "Codigo de Validacao",
+            html,
+        }).catch(emailError => {
             console.error("Falha ao enviar email de validacao:", emailError.message);
-        }
+        });
 
         return res.status(201).json({
             message: "Usuário criado com sucesso! Verifique seu e-mail para validar a conta.",

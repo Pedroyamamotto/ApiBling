@@ -2,16 +2,17 @@ import nodemailer from "nodemailer";
 import "dotenv/config";
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  service: "gmail",
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS || process.env.GMAIL_PASSWORD,
   },
   tls: {
-    rejectUnauthorized: false, // Ignora certificados autoassinados
+    rejectUnauthorized: false,
   },
+  connectionTimeout: 60000, // 60 segundos
+  greetingTimeout: 30000,
+  socketTimeout: 60000,
 });
 
 const sendEmail = async ({ to, subject, html }) => {
