@@ -15,7 +15,5 @@ services:
         sync: false
       - key: MONGODB_DB
         value: apibling
-      - key: GMAIL_USER
-        sync: false
-      - key: GMAIL_PASS
+      - key: RESEND_API_KEY
         sync: false

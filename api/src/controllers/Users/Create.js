@@ -2,9 +2,7 @@ import yup from "yup";
 import chalk from "chalk";
 import bcrypt from "bcrypt";
 import { getDb } from "../../db.js";
-import sendEmail from "../../../utils/EmailServices.js";
-import fs from "fs";
-import path from "path";
+import sendValidationEmail from "../../../utils/EmailServices.js";
 
 export const createUser = async (req, res) => {
     const schema = yup.object().shape({
@@ -57,19 +55,8 @@ export const createUser = async (req, res) => {
 
         console.log(chalk.green(`Sistema 💻 : Usuário Cadastrado com Sucesso: ${result.insertedId} ✅`));
 
-        // Caminho para o arquivo HTML
-        const templatePath = path.resolve("api/public/pages/codeVrifi.html");
-        let html = fs.readFileSync(templatePath, "utf-8");
-
-        // Substituir o placeholder {{validationCode}} pelo código gerado
-        html = html.replace("{{validationCode}}", validationCode);
-
         // Enviar e-mail com o código de validação (em background, sem bloquear a resposta)
-        sendEmail({
-            to: email,
-            subject: "Codigo de Validacao",
-            html,
-        }).catch(emailError => {
+        sendValidationEmail(email, validationCode).catch(emailError => {
             console.error("Falha ao enviar email de validacao:", emailError.message);
         });
 
