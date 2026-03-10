@@ -198,14 +198,42 @@ specs.paths = {
                     "application/json": {
                         "schema": {
                             "type": "object",
-                            "required": ["nome", "email", "telefone"],
+                            "required": ["cliente", "telefone", "cpf", "endereco"],
                             "properties": {
-                                "nome": {"type": "string"},
-                                "email": {"type": "string", "format": "email"},
+                                "cliente": {"type": "string", "description": "Nome do cliente"},
+                                "cpf": {"type": "string", "description": "CPF do cliente"},
                                 "telefone": {"type": "string"},
-                                "endereco": {"type": "string"},
-                                "cpf": {"type": "string"},
-                                "observacoes": {"type": "string"}
+                                "celular": {"type": "string"},
+                                "email": {"type": "string", "format": "email", "nullable": true},
+                                "endereco": {
+                                    "type": "object",
+                                    "required": ["rua", "numero", "bairro", "cidade", "estado", "cep"],
+                                    "properties": {
+                                        "rua": {"type": "string"},
+                                        "numero": {"type": "string"},
+                                        "bairro": {"type": "string"},
+                                        "cidade": {"type": "string"},
+                                        "estado": {"type": "string"},
+                                        "cep": {"type": "string"},
+                                        "complemento": {"type": "string"}
+                                    }
+                                }
+                            },
+                            "example": {
+                                "cliente": "Rodrigo Luperi",
+                                "cpf": "26917488801",
+                                "telefone": "(11) 94167-0180",
+                                "celular": "(11) 94167-0180",
+                                "email": "",
+                                "endereco": {
+                                    "rua": "Rua Professor Jose Kliass",
+                                    "numero": "49",
+                                    "bairro": "Rio Pequeno",
+                                    "cidade": "Sao Paulo",
+                                    "estado": "SP",
+                                    "cep": "05379080",
+                                    "complemento": "ap 133"
+                                }
                             }
                         }
                     }

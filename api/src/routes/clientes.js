@@ -13,32 +13,78 @@ const router = express.Router();
  * @swagger
  * components:
  *   schemas:
+ *     EnderecoCliente:
+ *       type: object
+ *       required:
+ *         - rua
+ *         - numero
+ *         - bairro
+ *         - cidade
+ *         - estado
+ *         - cep
+ *       properties:
+ *         rua:
+ *           type: string
+ *           description: Rua do cliente
+ *         numero:
+ *           type: string
+ *           description: Numero do endereco
+ *         bairro:
+ *           type: string
+ *           description: Bairro do cliente
+ *         cidade:
+ *           type: string
+ *           description: Cidade do cliente
+ *         estado:
+ *           type: string
+ *           description: Estado do cliente
+ *         cep:
+ *           type: string
+ *           description: CEP do cliente
+ *         complemento:
+ *           type: string
+ *           description: Complemento do endereco
  *     Cliente:
  *       type: object
  *       required:
- *         - nome
- *         - email
+ *         - cliente
  *         - telefone
+ *         - cpf
+ *         - endereco
  *       properties:
- *         nome:
+ *         cliente:
  *           type: string
  *           description: Nome do cliente
+ *         cpf:
+ *           type: string
+ *           description: CPF do cliente
  *         email:
  *           type: string
  *           format: email
+ *           nullable: true
  *           description: Email do cliente
  *         telefone:
  *           type: string
  *           description: Telefone do cliente
+ *         celular:
+ *           type: string
+ *           description: Celular do cliente
  *         endereco:
- *           type: string
- *           description: Endereço do cliente
- *         cpf:
- *           type: string
- *           description: CPF do cliente
- *         observacoes:
- *           type: string
- *           description: Observações sobre o cliente
+ *           $ref: '#/components/schemas/EnderecoCliente'
+ *       example:
+ *         cliente: Rodrigo Luperi
+ *         cpf: '26917488801'
+ *         telefone: '(11) 94167-0180'
+ *         celular: '(11) 94167-0180'
+ *         email: ''
+ *         endereco:
+ *           rua: Rua Professor Jose Kliass
+ *           numero: '49'
+ *           bairro: Rio Pequeno
+ *           cidade: Sao Paulo
+ *           estado: SP
+ *           cep: '05379080'
+ *           complemento: ap 133
  */
 
 /**
@@ -148,6 +194,20 @@ router.get("/clientes/:id", getClienteById);
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/Cliente'
+ *           example:
+ *             cliente: Rodrigo Luperi
+ *             cpf: '26917488801'
+ *             telefone: '(11) 94167-0180'
+ *             celular: '(11) 94167-0180'
+ *             email: ''
+ *             endereco:
+ *               rua: Rua Professor Jose Kliass
+ *               numero: '49'
+ *               bairro: Rio Pequeno
+ *               cidade: Sao Paulo
+ *               estado: SP
+ *               cep: '05379080'
+ *               complemento: ap 133
  *     responses:
  *       200:
  *         description: Cliente atualizado com sucesso
