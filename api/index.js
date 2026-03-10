@@ -205,6 +205,7 @@ specs.paths = {
                                 "telefone": {"type": "string"},
                                 "celular": {"type": "string"},
                                 "email": {"type": "string", "format": "email", "nullable": true},
+                                "bling_pedido_id": {"type": "string", "nullable": true, "description": "ID do pedido no Bling"},
                                 "endereco": {
                                     "type": "object",
                                     "required": ["rua", "numero", "bairro", "cidade", "estado", "cep"],
@@ -225,6 +226,7 @@ specs.paths = {
                                 "telefone": "(11) 94167-0180",
                                 "celular": "(11) 94167-0180",
                                 "email": "",
+                                "bling_pedido_id": "",
                                 "endereco": {
                                     "rua": "Rua Professor Jose Kliass",
                                     "numero": "49",

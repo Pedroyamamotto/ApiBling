@@ -10,6 +10,7 @@ function normalizeClientePayload(body) {
         telefone: body.telefone,
         celular: body.celular || body.telefone,
         email: body.email || null,
+        bling_pedido_id: body.bling_pedido_id || null,
         cpf: body.cpf,
         rua: body.rua || endereco.rua || null,
         numero: body.numero || endereco.numero,
@@ -54,6 +55,7 @@ export const createCliente = async (req, res) => {
         cep,
         celular,
         email,
+        bling_pedido_id,
         rua,
     } = clienteData;
 
@@ -71,6 +73,7 @@ export const createCliente = async (req, res) => {
             telefone,
             celular,
             email,
+            bling_pedido_id,
             cpf,
             rua,
             numero,

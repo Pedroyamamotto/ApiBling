@@ -69,6 +69,10 @@ const router = express.Router();
  *         celular:
  *           type: string
  *           description: Celular do cliente
+ *         bling_pedido_id:
+ *           type: string
+ *           nullable: true
+ *           description: ID do pedido no Bling vinculado ao cliente
  *         endereco:
  *           $ref: '#/components/schemas/EnderecoCliente'
  *       example:
@@ -77,6 +81,7 @@ const router = express.Router();
  *         telefone: '(11) 94167-0180'
  *         celular: '(11) 94167-0180'
  *         email: ''
+ *         bling_pedido_id: ''
  *         endereco:
  *           rua: Rua Professor Jose Kliass
  *           numero: '49'
@@ -200,6 +205,7 @@ router.get("/clientes/:id", getClienteById);
  *             telefone: '(11) 94167-0180'
  *             celular: '(11) 94167-0180'
  *             email: ''
+ *             bling_pedido_id: ''
  *             endereco:
  *               rua: Rua Professor Jose Kliass
  *               numero: '49'
