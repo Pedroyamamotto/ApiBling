@@ -1,5 +1,5 @@
 import { getDb } from "../../db.js";
-import sendEmail from "../../../utils/EmailServices.js";
+import sendEmail, { sendPasswordResetCode, sendPasswordResetConfirmation } from "../../../utils/EmailServices.js";
 import bcrypt from "bcrypt";
 
 export const requestPasswordReset = async (req, res) => {
@@ -21,11 +21,7 @@ export const requestPasswordReset = async (req, res) => {
 
         // Enviar e-mail com o código de redefinição (não bloqueia o fluxo se e-mail falhar)
         try {
-            await sendEmail({
-                to: email,
-                subject: "Redefinicao de Senha",
-                html: `<p>Ola, ${user.nome || user.name || "usuario"}!</p><p>Seu codigo de redefinicao de senha e: <strong>${resetCode}</strong></p>`,
-            });
+            await sendPasswordResetCode(email, resetCode, user.nome || user.name);
             return res.status(200).json({ message: "E-mail de redefinição enviado com sucesso!" });
         } catch (emailError) {
             console.error("Falha ao enviar e-mail de redefinicao:", emailError.message);
@@ -64,6 +60,13 @@ export const resetPassword = async (req, res) => {
             { email },
             { $set: { Senha: hashedPassword }, $unset: { resetCode: "" } }
         );
+
+        // Enviar e-mail de confirmação (não bloqueia o fluxo se falhar)
+        try {
+            await sendPasswordResetConfirmation(email, user.nome || user.name);
+        } catch (emailError) {
+            console.error("Falha ao enviar e-mail de confirmação:", emailError.message);
+        }
 
         return res.status(200).json({ message: "Senha redefinida com sucesso!" });
     } catch (error) {
