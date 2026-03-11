@@ -1,7 +1,9 @@
 import express from "express";
+import upload from "../middlewares/upload.js";
 import {
     createService,
     getServices,
+    getServicesAdminCompleto,
     getServiceById,
     updateService,
     deleteService,
@@ -170,6 +172,7 @@ router.post("/services", createService);
  *                   type: integer
  */
 router.get("/services", getServices);
+router.get("/services/admin/completo", getServicesAdminCompleto);
 
 /**
  * @swagger
@@ -222,6 +225,7 @@ router.get("/services/:id", getServiceById);
  *         description: Serviço não encontrado
  */
 router.put("/services/:id", updateService);
+router.patch("/services/:id", upload.single("foto"), updateService);
 
 /**
  * @swagger

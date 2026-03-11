@@ -1,5 +1,6 @@
 export { createService } from "./CreatServices.js";
 export { getServices } from "./GetServices.js";
+export { getServicesAdminCompleto } from "./GetServicesAdminCompleto.js";
 export { getServiceById } from "./GetServiceById.js";
 export { updateService } from "./UpdateService.js";
 export { deleteService } from "./DeleteService.js";

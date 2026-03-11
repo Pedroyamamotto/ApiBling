@@ -2,18 +2,60 @@ import yup from "yup";
 import chalk from "chalk";
 import { getDb } from "../../db.js";
 import { ObjectId } from "mongodb";
+import path from "node:path";
+import { promises as fs } from "node:fs";
+
+const UPLOAD_RELATIVE_DIR = path.join("public", "uploads", "services");
+
+const parseChecklistInput = (checklist) => {
+    if (checklist === undefined || checklist === null || checklist === "") {
+        return undefined;
+    }
+
+    if (Array.isArray(checklist)) {
+        return checklist;
+    }
+
+    if (typeof checklist === "string") {
+        const parsed = JSON.parse(checklist);
+        if (!Array.isArray(parsed)) {
+            throw new Error("Campo checklist deve ser um array de strings");
+        }
+        return parsed;
+    }
+
+    throw new Error("Formato inválido para checklist");
+};
+
+const saveUploadedPhoto = async (file) => {
+    if (!file) {
+        return undefined;
+    }
+
+    const uploadAbsoluteDir = path.resolve(process.cwd(), "api", UPLOAD_RELATIVE_DIR);
+    await fs.mkdir(uploadAbsoluteDir, { recursive: true });
+
+    const ext = file.mimetype === "image/png" ? "png" : "jpg";
+    const fileName = `service-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+    const destination = path.join(uploadAbsoluteDir, fileName);
+
+    await fs.writeFile(destination, file.buffer);
+
+    return `/uploads/services/${fileName}`;
+};
 
 export const updateService = async (req, res) => {
     const { id } = req.params;
 
     if (!ObjectId.isValid(id)) {
-        return res.status(400).json({ error: "ID inválido" });
+        return res.status(400).json({ message: "ID inválido" });
     }
 
     const schema = yup.object().shape({
         pedido_id: yup.string(),
+        numero_pedido: yup.string(),
         cliente_id: yup.string(),
-        tecnico_id: yup.string(),
+        tecnico_id: yup.mixed(),
         status: yup.string(),
         data_agendada: yup.date(),
         hora_agendada: yup.string(),
@@ -22,12 +64,26 @@ export const updateService = async (req, res) => {
         checkin_data: yup.date(),
         concluido_em: yup.date(),
         nao_realizado_motivo: yup.string(),
+        motivo_nao_realizacao: yup.string(),
+        assinatura: yup.string(),
+        assinatura_url: yup.string(),
     });
 
+    const isMultipart = req.is("multipart/form-data");
+    const incomingBody = { ...req.body };
+
     try {
-        await schema.validate(req.body, { abortEarly: false });
+        if (incomingBody.checklist !== undefined) {
+            incomingBody.checklist = parseChecklistInput(incomingBody.checklist);
+        }
     } catch (error) {
-        return res.status(400).json({ error: error.errors });
+        return res.status(400).json({ message: error.message });
+    }
+
+    try {
+        await schema.validate(incomingBody, { abortEarly: false });
+    } catch (error) {
+        return res.status(400).json({ message: error.errors?.[0] || "Dados inválidos" });
     }
 
     try {
@@ -37,10 +93,38 @@ export const updateService = async (req, res) => {
         const existingService = await servicosCollection.findOne({ _id: new ObjectId(id) });
         
         if (!existingService) {
-            return res.status(404).json({ error: "Serviço não encontrado" });
+            return res.status(404).json({ message: "Serviço não encontrado" });
         }
 
-        const updateData = { ...req.body };
+        const updateData = { ...incomingBody };
+
+        if (updateData.assinatura && !updateData.assinatura_url) {
+            updateData.assinatura_url = updateData.assinatura;
+        }
+
+        if (updateData.status === "nao_realizado" && updateData.motivo_nao_realizacao) {
+            updateData.nao_realizado_motivo = updateData.motivo_nao_realizacao;
+        }
+
+        if (updateData.status === "concluido") {
+            if (!updateData.checklist || !Array.isArray(updateData.checklist) || updateData.checklist.length === 0) {
+                return res.status(400).json({ message: "Checklist é obrigatório para concluir serviço" });
+            }
+
+            if (!updateData.assinatura && !updateData.assinatura_url) {
+                return res.status(400).json({ message: "Assinatura é obrigatória para concluir serviço" });
+            }
+
+            if (isMultipart && req.file) {
+                updateData.foto_url = await saveUploadedPhoto(req.file);
+            }
+
+            updateData.concluido_em = new Date();
+        }
+
+        if (updateData.status === "nao_realizado" && !updateData.nao_realizado_motivo) {
+            return res.status(400).json({ message: "motivo_nao_realizacao é obrigatório para status nao_realizado" });
+        }
 
         // Converter datas se fornecidas
         if (updateData.data_agendada) {
@@ -62,12 +146,21 @@ export const updateService = async (req, res) => {
 
         console.log(chalk.yellow(`Sistema 💻 : Serviço Atualizado com Sucesso: ${id} 🔄`));
 
+        if (updateData.status === "concluido") {
+            return res.status(200).json({ success: true, message: "Serviço concluído" });
+        }
+
+        if (updateData.status === "nao_realizado") {
+            return res.status(200).json({ success: true, message: "Serviço atualizado" });
+        }
+
         return res.status(200).json({
+            success: true,
             message: "Serviço atualizado com sucesso!",
             modifiedCount: result.modifiedCount,
         });
     } catch (error) {
         console.error("Erro ao atualizar serviço:", error);
-        return res.status(500).json({ error: "Erro interno no servidor" });
+        return res.status(500).json({ message: "Erro interno no servidor" });
     }
 };

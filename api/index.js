@@ -14,6 +14,7 @@ app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(path.resolve("./api/public/uploads")));
 
 // Busca as Rotas
 app.use("/api", apiRedirect);
