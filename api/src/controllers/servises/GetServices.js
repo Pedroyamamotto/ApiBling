@@ -16,13 +16,18 @@ export const getServices = async (req, res) => {
         if (pedido_id) filter.pedido_id = pedido_id;
 
         const services = await servicosCollection.find(filter).toArray();
+        const servicesFormatted = services.map((service) => ({
+            ...service,
+            id: service._id?.toString(),
+            numero_pedido: service.numero_pedido ?? null,
+        }));
 
-        console.log(chalk.blue(`Sistema 💻 : ${services.length} serviço(s) encontrado(s) 🔍`));
+        console.log(chalk.blue(`Sistema 💻 : ${servicesFormatted.length} serviço(s) encontrado(s) 🔍`));
 
         return res.status(200).json({
             message: "Serviços listados com sucesso!",
-            count: services.length,
-            services,
+            count: servicesFormatted.length,
+            services: servicesFormatted,
         });
     } catch (error) {
         console.error("Erro ao buscar serviços:", error);

@@ -3,6 +3,12 @@ import chalk from "chalk";
 import { getDb } from "../../db.js";
 
 export const createService = async (req, res) => {
+    const servicePayload = Array.isArray(req.body) ? req.body[0] : req.body;
+
+    if (!servicePayload || typeof servicePayload !== "object") {
+        return res.status(400).json({ error: ["Payload inválido"] });
+    }
+
     const schema = yup.object().shape({
         numero_pedido: yup.string().required(),
         pedido_id: yup.string().required(),
@@ -19,7 +25,7 @@ export const createService = async (req, res) => {
     });
 
     try {
-        await schema.validate(req.body, { abortEarly: false });
+        await schema.validate(servicePayload, { abortEarly: false });
     } catch (error) {
         return res.status(400).json({ error: error.errors });
     }
@@ -37,14 +43,14 @@ export const createService = async (req, res) => {
         checkin_data,
         concluido_em,
         nao_realizado_motivo,
-    } = req.body;
+    } = servicePayload;
 
     try {
         const db = await getDb();
         const servicosCollection = db.collection("servicos");
 
         const result = await servicosCollection.insertOne({
-            numero_pedido,
+            numero_pedido: String(numero_pedido),
             pedido_id,
             cliente_id,
             tecnico_id,

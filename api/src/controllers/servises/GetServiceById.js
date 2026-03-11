@@ -19,11 +19,17 @@ export const getServiceById = async (req, res) => {
             return res.status(404).json({ error: "Serviço não encontrado" });
         }
 
+        const serviceFormatted = {
+            ...service,
+            id: service._id?.toString(),
+            numero_pedido: service.numero_pedido ?? null,
+        };
+
         console.log(chalk.blue(`Sistema 💻 : Serviço encontrado: ${id} 🔍`));
 
         return res.status(200).json({
             message: "Serviço encontrado com sucesso!",
-            service,
+            service: serviceFormatted,
         });
     } catch (error) {
         console.error("Erro ao buscar serviço:", error);
