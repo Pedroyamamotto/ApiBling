@@ -4,6 +4,7 @@ import { getDb } from "../../db.js";
 
 export const createService = async (req, res) => {
     const schema = yup.object().shape({
+        numero_pedido: yup.string().required(),
         pedido_id: yup.string().required(),
         cliente_id: yup.string().required(),
         tecnico_id: yup.string().required(),
@@ -24,6 +25,7 @@ export const createService = async (req, res) => {
     }
 
     const {
+        numero_pedido,
         pedido_id,
         cliente_id,
         tecnico_id,
@@ -42,6 +44,7 @@ export const createService = async (req, res) => {
         const servicosCollection = db.collection("servicos");
 
         const result = await servicosCollection.insertOne({
+            numero_pedido,
             pedido_id,
             cliente_id,
             tecnico_id,
