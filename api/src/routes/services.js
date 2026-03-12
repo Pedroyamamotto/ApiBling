@@ -30,42 +30,45 @@ const router = express.Router();
  *     Service:
  *       type: object
  *       required:
- *         - clienteId
- *         - tecnicoId
- *         - pedidoId
- *         - descricao
- *         - dataAgendada
+ *         - numero_pedido
+ *         - pedido_id
+ *         - cliente_id
+ *         - status
+ *         - data_agendada
+ *         - hora_agendada
+ *         - descricao_servico
  *         - status
  *       properties:
- *         clienteId:
+ *         numero_pedido:
  *           type: string
- *           description: ID do cliente
- *         tecnicoId:
- *           type: string
- *           description: ID do técnico responsável
- *         pedidoId:
+ *           description: Número do pedido vinculado ao serviço
+ *         pedido_id:
  *           type: string
  *           description: ID do pedido relacionado
- *         descricao:
+ *         cliente_id:
+ *           type: string
+ *           description: ID do cliente
+ *         tecnico_id:
+ *           type: string
+ *           nullable: true
+ *           description: ID do técnico responsável
+ *         descricao_servico:
  *           type: string
  *           description: Descrição do serviço
- *         dataAgendada:
+ *         data_agendada:
  *           type: string
- *           format: date
+ *           format: date-time
  *           description: Data agendada para o serviço
  *         status:
  *           type: string
- *           enum: [agendado, em_andamento, concluido, cancelado, nao_realizado]
+ *           enum: [aguardando, atribuido, concluido, nao_realizado]
  *           description: Status do serviço
  *         observacoes:
  *           type: string
  *           description: Observações do serviço
- *         horaInicio:
+ *         hora_agendada:
  *           type: string
- *           description: Hora de início do serviço
- *         horaFim:
- *           type: string
- *           description: Hora de fim do serviço
+ *           description: Hora agendada para o serviço
  *     ServiceFinalization:
  *       type: object
  *       properties:
@@ -132,7 +135,7 @@ router.post("/services", createService);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [agendado, em_andamento, concluido, cancelado, nao_realizado]
+ *           enum: [aguardando, atribuido, concluido, nao_realizado]
  *         description: Filtrar por status
  *       - in: query
  *         name: tecnicoId
@@ -182,7 +185,7 @@ router.get("/services", getServices);
  * /api/services/admin/completo:
  *   get:
  *     summary: "[LEGADO] Listar serviços com dados de finalização consolidados"
- *     tags: [Admin - Serviços]
+ *     tags: [Admin]
  *     parameters:
  *       - in: query
  *         name: status
@@ -212,7 +215,7 @@ router.get("/services/admin/completo", getServicesAdminCompleto);
  * /api/admin/services:
  *   get:
  *     summary: Listar serviços com dados enriquecidos de cliente e técnico (admin)
- *     tags: [Admin - Serviços]
+ *     tags: [Admin]
  *     security:
  *       - AdminKey: []
  *     parameters:
@@ -308,7 +311,7 @@ router.get("/admin/services", requireAdmin, getServicesAdminLista);
  * /api/services/{id}/admin/atribuir:
  *   patch:
  *     summary: Atribuir técnico e agendar visita (admin)
- *     tags: [Admin - Serviços]
+ *     tags: [Admin]
  *     security:
  *       - AdminKey: []
  *     parameters:
@@ -353,7 +356,7 @@ router.patch("/services/:id/admin/atribuir", requireAdmin, adminAtribuirTecnico)
  * /api/admin/dashboard:
  *   get:
  *     summary: Dashboard administrativo — resumo e desempenho por técnico
- *     tags: [Admin - Dashboard]
+ *     tags: [Admin]
  *     security:
  *       - AdminKey: []
  *     responses:
@@ -433,7 +436,7 @@ router.get("/services/:id", getServiceById);
 /**
  * @swagger
  * /api/services/{id}:
- *   put:
+ *   patch:
  *     summary: Atualizar serviço
  *     tags: [Serviços]
  *     parameters:
@@ -448,14 +451,18 @@ router.get("/services/:id", getServiceById);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Service'
+ *             type: object
+ *             description: Payload JSON para marcar como nao_realizado
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             description: Payload multipart para concluir com checklist, assinatura e foto
  *     responses:
  *       200:
  *         description: Serviço atualizado com sucesso
  *       404:
  *         description: Serviço não encontrado
  */
-router.put("/services/:id", updateService);
 router.patch("/services/:id", upload.single("foto"), updateService);
 
 /**

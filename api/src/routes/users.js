@@ -325,10 +325,26 @@ router.get("/users/activity/:userId", getUserActivities);
  * /api/admin/users/tecnicos:
  *   get:
  *     summary: Listar usuários técnicos (admin)
- *     tags: [Usuários]
+ *     tags: [Admin]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
  *     responses:
  *       200:
- *         description: Lista de técnicos
+ *         description: Lista paginada de técnicos
+ *       403:
+ *         description: Acesso negado
  */
 router.get("/admin/users/tecnicos", requireAdmin, getTecnicos);
 
