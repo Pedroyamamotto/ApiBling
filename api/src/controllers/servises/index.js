@@ -1,4 +1,7 @@
 export { createService } from "./CreatServices.js";
+export { adminAtribuirTecnico } from "./AdminAtribuirTecnico.js";
+export { adminDashboard } from "./AdminDashboard.js";
+export { getServicesAdminLista } from "./GetServicesAdminLista.js";
 export { getServices } from "./GetServices.js";
 export { getServicesAdminCompleto } from "./GetServicesAdminCompleto.js";
 export { getServiceById } from "./GetServiceById.js";

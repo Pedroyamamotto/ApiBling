@@ -1,7 +1,11 @@
 import express from "express";
 import upload from "../middlewares/upload.js";
+import { requireAdmin } from "../middlewares/requireAdmin.js";
 import {
     createService,
+    adminAtribuirTecnico,
+    adminDashboard,
+    getServicesAdminLista,
     getServices,
     getServicesAdminCompleto,
     getServiceById,
@@ -172,7 +176,234 @@ router.post("/services", createService);
  *                   type: integer
  */
 router.get("/services", getServices);
+
+/**
+ * @swagger
+ * /api/services/admin/completo:
+ *   get:
+ *     summary: "[LEGADO] Listar serviços com dados de finalização consolidados"
+ *     tags: [Admin - Serviços]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [aguardando, atribuido, concluido, nao_realizado]
+ *       - in: query
+ *         name: tecnico_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: cliente_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: numero_pedido
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de serviços com checklist/foto/assinatura
+ */
 router.get("/services/admin/completo", getServicesAdminCompleto);
+
+/**
+ * @swagger
+ * /api/admin/services:
+ *   get:
+ *     summary: Listar serviços com dados enriquecidos de cliente e técnico (admin)
+ *     tags: [Admin - Serviços]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [aguardando, atribuido, concluido, nao_realizado]
+ *         description: Filtrar por status
+ *       - in: query
+ *         name: tecnico_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: cliente_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: numero_pedido
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *     responses:
+ *       200:
+ *         description: Lista paginada com nome_cliente, telefone_cliente, endereco_cliente, nome_tecnico
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 total:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 count:
+ *                   type: integer
+ *                 services:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       numero_pedido:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         enum: [aguardando, atribuido, concluido, nao_realizado]
+ *                       nome_cliente:
+ *                         type: string
+ *                       telefone_cliente:
+ *                         type: string
+ *                       endereco_cliente:
+ *                         type: string
+ *                       nome_tecnico:
+ *                         type: string
+ *                       data_agendada:
+ *                         type: string
+ *                         format: date-time
+ *                       hora_agendada:
+ *                         type: string
+ *                       descricao_servico:
+ *                         type: string
+ *                       checklist:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       motivo_nao_realizacao:
+ *                         type: string
+ *       401:
+ *         description: Não autenticado
+ *       403:
+ *         description: Acesso negado
+ */
+router.get("/admin/services", requireAdmin, getServicesAdminLista);
+
+/**
+ * @swagger
+ * /api/services/{id}/admin/atribuir:
+ *   patch:
+ *     summary: Atribuir técnico e agendar visita (admin)
+ *     tags: [Admin - Serviços]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [tecnico_id, data_agendada, hora_agendada]
+ *             properties:
+ *               tecnico_id:
+ *                 type: string
+ *               data_agendada:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-03-20"
+ *               hora_agendada:
+ *                 type: string
+ *                 example: "09:00"
+ *               observacoes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Técnico atribuído — status muda para "atribuido"
+ *       400:
+ *         description: Dados obrigatórios ausentes
+ *       403:
+ *         description: Acesso negado
+ *       404:
+ *         description: Serviço não encontrado
+ */
+router.patch("/services/:id/admin/atribuir", requireAdmin, adminAtribuirTecnico);
+
+/**
+ * @swagger
+ * /api/admin/dashboard:
+ *   get:
+ *     summary: Dashboard administrativo — resumo e desempenho por técnico
+ *     tags: [Admin - Dashboard]
+ *     security:
+ *       - AdminKey: []
+ *     responses:
+ *       200:
+ *         description: Estatísticas gerais e desempenho individual de técnicos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 resumo:
+ *                   type: object
+ *                   properties:
+ *                     aguardando:
+ *                       type: integer
+ *                     atribuidos:
+ *                       type: integer
+ *                     concluidos:
+ *                       type: integer
+ *                     nao_realizados:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     taxa_conclusao:
+ *                       type: integer
+ *                     tecnicos_ativos:
+ *                       type: integer
+ *                 desempenho_tecnicos:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       tecnico_id:
+ *                         type: string
+ *                       nome:
+ *                         type: string
+ *                       concluidos:
+ *                         type: integer
+ *                       nao_realizados:
+ *                         type: integer
+ *                       pendentes:
+ *                         type: integer
+ *                       total:
+ *                         type: integer
+ *                       taxa_conclusao:
+ *                         type: integer
+ *       403:
+ *         description: Acesso negado
+ */
+router.get("/admin/dashboard", requireAdmin, adminDashboard);
 
 /**
  * @swagger

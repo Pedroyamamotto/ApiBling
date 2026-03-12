@@ -2,6 +2,16 @@ import chalk from "chalk";
 import { ObjectId } from "mongodb";
 import { getDb } from "../../db.js";
 
+const getUtcDayFromDate = (value) => {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    return date.getUTCDate();
+};
+
 export const getTecnicoAgenda = async (req, res) => {
     const { tecnicoId } = req.params;
     const { mes, ano } = req.query;
@@ -55,7 +65,12 @@ export const getTecnicoAgenda = async (req, res) => {
         // Agrupar por dia
         const agendaPorDia = {};
         servicosEnriquecidos.forEach(servico => {
-            const dia = new Date(servico.data_agendada).getDate();
+            const dia = getUtcDayFromDate(servico.data_agendada);
+
+            if (!dia) {
+                return;
+            }
+
             if (!agendaPorDia[dia]) {
                 agendaPorDia[dia] = [];
             }

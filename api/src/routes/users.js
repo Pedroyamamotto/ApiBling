@@ -1,4 +1,5 @@
 import express from "express";
+import { requireAdmin } from "../middlewares/requireAdmin.js";
 import {
 	createUser,
 	loginUser,
@@ -9,6 +10,7 @@ import {
 	deleteUser,
 	logUserActivity,
 	getUserActivities,
+	getTecnicos,
 } from "../controllers/Users/index.js";
 
 const router = express.Router();
@@ -317,5 +319,17 @@ router.post("/users/activity", logUserActivity);
  *                     type: object
  */
 router.get("/users/activity/:userId", getUserActivities);
+
+/**
+ * @swagger
+ * /api/admin/users/tecnicos:
+ *   get:
+ *     summary: Listar usuários técnicos (admin)
+ *     tags: [Usuários]
+ *     responses:
+ *       200:
+ *         description: Lista de técnicos
+ */
+router.get("/admin/users/tecnicos", requireAdmin, getTecnicos);
 
 export default router;

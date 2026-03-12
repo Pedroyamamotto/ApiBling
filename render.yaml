@@ -5,7 +5,7 @@ services:
     plan: starter
     region: oregon
     buildCommand: npm install
-    startCommand: node api/idex.js
+    startCommand: node api/index.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -14,6 +14,6 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DB
-        value: apibling
+        value: DBservisos
       - key: RESEND_API_KEY
         sync: false

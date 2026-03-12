@@ -381,7 +381,7 @@ specs.paths = {
             "parameters": [
                 {"name": "page", "in": "query", "schema": {"type": "integer"}},
                 {"name": "limit", "in": "query", "schema": {"type": "integer"}},
-                {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["agendado", "em_andamento", "concluido", "cancelado", "nao_realizado"]}},
+                {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["aguardando", "atribuido", "concluido", "nao_realizado"]}},
                 {"name": "tecnicoId", "in": "query", "schema": {"type": "string"}},
                 {"name": "clienteId", "in": "query", "schema": {"type": "string"}},
                 {"name": "dataInicio", "in": "query", "schema": {"type": "string", "format": "date"}},
@@ -407,10 +407,9 @@ specs.paths = {
                                 "pedidoId": {"type": "string"},
                                 "descricao": {"type": "string"},
                                 "dataAgendada": {"type": "string", "format": "date"},
-                                "status": {"type": "string", "enum": ["agendado", "em_andamento", "concluido", "cancelado", "nao_realizado"]},
+                                "status": {"type": "string", "enum": ["aguardando", "atribuido", "concluido", "nao_realizado"]},
                                 "observacoes": {"type": "string"},
-                                "horaInicio": {"type": "string"},
-                                "horaFim": {"type": "string"}
+                                "hora_agendada": {"type": "string"}
                             }
                         }
                     }
@@ -488,6 +487,122 @@ specs.paths = {
                 "200": {"description": "Serviços do dia"}
             }
         }
+    },
+    "/api/admin/services": {
+        "get": {
+            "summary": "Listar serviços enriquecidos com dados de cliente e técnico (admin)",
+            "tags": ["Admin"],
+            "security": [{"AdminKey": []}],
+            "parameters": [
+                {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["aguardando", "atribuido", "concluido", "nao_realizado"]}},
+                {"name": "tecnico_id", "in": "query", "schema": {"type": "string"}},
+                {"name": "cliente_id", "in": "query", "schema": {"type": "string"}},
+                {"name": "numero_pedido", "in": "query", "schema": {"type": "string"}},
+                {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20, "maximum": 100}}
+            ],
+            "responses": {
+                "200": {"description": "Lista paginada com nome_cliente, telefone_cliente, endereco_cliente, nome_tecnico"},
+                "403": {"description": "Acesso negado"}
+            }
+        }
+    },
+    "/api/admin/dashboard": {
+        "get": {
+            "summary": "Dashboard administrativo — resumo geral e desempenho por técnico",
+            "tags": ["Admin"],
+            "security": [{"AdminKey": []}],
+            "responses": {
+                "200": {
+                    "description": "Estatísticas do dashboard",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "resumo": {
+                                        "type": "object",
+                                        "properties": {
+                                            "aguardando": {"type": "integer"},
+                                            "atribuidos": {"type": "integer"},
+                                            "concluidos": {"type": "integer"},
+                                            "nao_realizados": {"type": "integer"},
+                                            "total": {"type": "integer"},
+                                            "taxa_conclusao": {"type": "integer"},
+                                            "tecnicos_ativos": {"type": "integer"}
+                                        }
+                                    },
+                                    "desempenho_tecnicos": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "tecnico_id": {"type": "string"},
+                                                "nome": {"type": "string"},
+                                                "concluidos": {"type": "integer"},
+                                                "nao_realizados": {"type": "integer"},
+                                                "pendentes": {"type": "integer"},
+                                                "total": {"type": "integer"},
+                                                "taxa_conclusao": {"type": "integer"}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "403": {"description": "Acesso negado"}
+            }
+        }
+    },
+    "/api/admin/users/tecnicos": {
+        "get": {
+            "summary": "Listar técnicos cadastrados (admin)",
+            "tags": ["Admin"],
+            "security": [{"AdminKey": []}],
+            "parameters": [
+                {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                {"name": "limit", "in": "query", "schema": {"type": "integer", "default": 20, "maximum": 100}}
+            ],
+            "responses": {
+                "200": {"description": "Lista paginada de técnicos"},
+                "403": {"description": "Acesso negado"}
+            }
+        }
+    },
+    "/api/services/{id}/admin/atribuir": {
+        "patch": {
+            "summary": "Atribuir técnico e agendar visita (admin)",
+            "tags": ["Admin"],
+            "security": [{"AdminKey": []}],
+            "parameters": [
+                {"name": "id", "in": "path", "required": true, "schema": {"type": "string"}, "description": "ID do serviço"}
+            ],
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "required": ["tecnico_id", "data_agendada", "hora_agendada"],
+                            "properties": {
+                                "tecnico_id": {"type": "string"},
+                                "data_agendada": {"type": "string", "format": "date", "example": "2026-03-20"},
+                                "hora_agendada": {"type": "string", "example": "09:00"},
+                                "observacoes": {"type": "string"}
+                            }
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {"description": "Técnico atribuído — status muda para 'atribuido'"},
+                "400": {"description": "Dados obrigatórios ausentes"},
+                "403": {"description": "Acesso negado"},
+                "404": {"description": "Serviço não encontrado"}
+            }
+        }
     }
 };
 
@@ -495,8 +610,18 @@ specs.tags = [
     {"name": "Usuários", "description": "Operações relacionadas aos usuários"},
     {"name": "Clientes", "description": "Operações relacionadas aos clientes"},
     {"name": "Pedidos", "description": "Operações relacionadas aos pedidos"},
-    {"name": "Serviços", "description": "Operações relacionadas aos serviços"}
+    {"name": "Serviços", "description": "Operações relacionadas aos serviços"},
+    {"name": "Admin", "description": "Rotas administrativas protegidas por AdminKey — Header: x-admin-key: SUA_CHAVE"}
 ];
+specs.components = specs.components || {};
+specs.components.securitySchemes = {
+    AdminKey: {
+        type: "apiKey",
+        in: "header",
+        name: "x-admin-key",
+        description: "Chave de admin (env ADMIN_API_KEY). Em dev, pode usar header x-user-type: admin"
+    }
+};
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 // Expor JSON da documentação

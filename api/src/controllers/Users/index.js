@@ -1,4 +1,5 @@
 export * from "./Create.js";
+export * from "./GetTecnicos.js";
 export * from "./Delete.js";
 export * from "./Login.js";
 export * from "./Logout.js";
