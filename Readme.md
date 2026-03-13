@@ -84,7 +84,7 @@ O **ApiBling** é uma API REST robusta desenvolvida pela **Yamamoto** para gest�
 
 ### 🎯 Sistema de Finalização de Serviços
 - [x] **Checklist técnico obrigatório** - 8 itens de validação
-- [x] **Upload de fotos** - Evidências do serviço (URLs)
+- [x] **Upload de fotos** - Evidências do serviço com envio de 1 ou 2 imagens
 - [x] **Assinatura digital** - Captura de assinatura do cliente
 - [x] **Validação completa** - Todos os itens obrigatórios
 - [x] **Conclusão automática** - Status e timestamp atualizados
@@ -105,6 +105,32 @@ O **ApiBling** é uma API REST robusta desenvolvida pela **Yamamoto** para gest�
 #### Como Funciona
 
 O sistema de finalização garante que todos os serviços sejam concluídos com evidências completas: checklist técnico, fotos do trabalho realizado e assinatura do cliente confirmando a execução.
+
+#### Atualização da Rota de Conclusão
+
+O endpoint PATCH /api/services/:id agora aceita multipart/form-data com o campo foto repetido até 2 vezes. As imagens novas são armazenadas no MongoDB usando GridFS. O backend continua aceitando clientes antigos que enviam apenas 1 imagem e mantém o campo legado foto_url com a primeira URL salva.
+
+Regras do upload:
+
+- Campo: foto
+- Quantidade máxima: 2 imagens
+- Tipos aceitos: image/jpeg, image/jpg, image/png, image/webp, image/heic, image/heif
+- Limite por arquivo: 10MB
+- Erros de upload: resposta 400 para excesso de arquivos, formato inválido ou tamanho excedido
+
+Exemplo de resposta:
+
+```json
+{
+  "success": true,
+  "message": "Serviço concluído",
+  "foto_url": "/api/uploads/services/67d2c8b2f1a2b93f1d7a1234",
+  "fotos_urls": [
+    "/api/uploads/services/67d2c8b2f1a2b93f1d7a1234",
+    "/api/uploads/services/67d2c8b2f1a2b93f1d7a1235"
+  ]
+}
+```
 
 #### Estrutura de Collections
 
@@ -566,15 +592,20 @@ npm test
 # 2. Configure as variáveis de ambiente:
 MONGODB_URI=sua-uri-mongodb-atlas
 MONGODB_DB=apibling_db
-SESSION_SECRET=sua-chave-secreta
-GMAIL_USER=seu-email@gmail.com
-GMAIL_PASS=sua-senha-de-app
+ADMIN_API_KEY=sua-chave-admin
+RESEND_API_KEY=sua-chave-resend
 NODE_ENV=production
 
 # 3. Configure os comandos:
 # Build Command: npm install
 # Start Command: npm start
 ```
+
+Observações de produção:
+
+- As fotos novas de conclusão são armazenadas no MongoDB via GridFS.
+- As URLs retornadas pela API para essas fotos seguem o formato /api/uploads/services/:fileId.
+- Para rotas administrativas em produção, configure ADMIN_API_KEY; o fallback x-user-type=admin deve ficar restrito a teste.
 
 ## 🤝 Contribuição
 

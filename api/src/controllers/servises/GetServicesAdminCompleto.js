@@ -75,21 +75,27 @@ export const getServicesAdminCompleto = async (req, res) => {
             const legacyChecklistItems = getChecklistFromLegacyDoc(legacyChecklist);
             const legacyFotosUrls = fotosByServiceId.get(serviceId) || [];
             const legacyAssinaturaUrl = assinaturaByServiceId.get(serviceId) || null;
+            const fotosUrls = Array.isArray(service.fotos_urls) && service.fotos_urls.length > 0
+                ? service.fotos_urls.filter(Boolean)
+                : service.foto_url
+                    ? [service.foto_url]
+                    : legacyFotosUrls;
 
             const checklist = Array.isArray(service.checklist)
                 ? service.checklist
                 : legacyChecklistItems;
 
             const assinaturaUrl = service.assinatura_url || legacyAssinaturaUrl;
-            const fotoUrl = service.foto_url || legacyFotosUrls[0] || null;
+            const fotoUrl = service.foto_url || fotosUrls[0] || legacyFotosUrls[0] || null;
 
             return {
                 ...service,
                 id: serviceId,
                 numero_pedido: service.numero_pedido ?? null,
                 checklist: checklist || [],
-                fotos: legacyFotosUrls,
+                fotos: fotosUrls,
                 foto_url: fotoUrl,
+                fotos_urls: fotosUrls,
                 assinatura_url: assinaturaUrl,
                 motivo_nao_realizacao:
                     service.motivo_nao_realizacao || service.nao_realizado_motivo || null,

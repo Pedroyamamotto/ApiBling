@@ -45,6 +45,7 @@ NODE_ENV=production
 # ===================================
 # OPÇÃO 1: MongoDB Local
 MONGODB_URI=mongodb://localhost:27017/yamamoto_api
+MONGODB_DB=yamamoto_api
 
 # OPÇÃO 2: MongoDB Atlas (Cloud)
 # MONGODB_URI=mongodb+srv://usuario:senha@cluster.mongodb.net/yamamoto_api?retryWrites=true&w=majority
@@ -52,18 +53,13 @@ MONGODB_URI=mongodb://localhost:27017/yamamoto_api
 # ===================================
 # CONFIGURAÇÕES DE EMAIL
 # ===================================
-# Email que enviará os códigos de verificação
-GMAIL_USER=seu-email@gmail.com
-
-# Senha de aplicativo do Gmail (NÃO É A SENHA NORMAL)
-# Como obter: https://support.google.com/accounts/answer/185833?hl=pt-BR
-GMAIL_PASSWORD=xxxx xxxx xxxx xxxx
+# Serviço de envio transacional
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxx
 
 # ===================================
 # SEGURANÇA
 # ===================================
-# Chave secreta para sessões (gere uma aleatória)
-SESSION_SECRET=yamamoto_secret_key_2026_production_safe
+ADMIN_API_KEY=gere_uma_chave_forte_para_rotas_admin
 
 # ===================================
 # CONFIGURAÇÕES OPCIONAIS
@@ -91,10 +87,9 @@ npm list --depth=0
 - bcrypt: Hash de senhas
 - yup: Validação de schemas
 - chalk: Logs coloridos
-- nodemailer: Envio de emails
+- resend: Envio de emails
 - cors: Configurações CORS
 - dotenv: Variáveis de ambiente
-- express-session: Gerenciamento de sessões
 - morgan: Logs HTTP
 
 ---
@@ -138,8 +133,10 @@ db.createCollection("clientes")
 db.createCollection("pedidos")
 db.createCollection("servicos")
 db.createCollection("servicos_checklist")
-db.createCollection("servico_fotos")
 db.createCollection("servico_assinatura")
+
+// As fotos novas dos serviços são armazenadas em GridFS no MongoDB.
+// O bucket servicePhotos.files / servicePhotos.chunks é criado automaticamente no primeiro upload.
 
 // Criar indexes para performance
 db.usuários.createIndex({ email: 1 }, { unique: true })
@@ -203,7 +200,7 @@ curl -X POST http://localhost:3000/api/users/create \
 cd api
 
 # Iniciar servidor
-node server/server.js
+npm start
 ```
 
 Você verá no console:
@@ -221,7 +218,7 @@ Você verá no console:
 npm install -g pm2
 
 # Iniciar aplicação
-pm2 start api/server/server.js --name "yamamoto-api"
+pm2 start npm --name "yamamoto-api" -- start
 
 # Ver logs
 pm2 logs yamamoto-api
@@ -555,7 +552,7 @@ nano .env
 npm install -g pm2
 
 # 8. Iniciar aplicação
-pm2 start api/server/server.js --name yamamoto-api
+pm2 start npm --name yamamoto-api -- start
 pm2 save
 pm2 startup
 

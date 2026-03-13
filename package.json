@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node api/index.js",
+    "test": "node --test ./api/tests/**/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -29,5 +30,8 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "yup": "^1.7.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.4"
   }
 }

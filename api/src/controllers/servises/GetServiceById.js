@@ -2,6 +2,18 @@ import chalk from "chalk";
 import { getDb } from "../../db.js";
 import { ObjectId } from "mongodb";
 
+const normalizePhotoUrls = (service) => {
+    if (Array.isArray(service?.fotos_urls) && service.fotos_urls.length > 0) {
+        return service.fotos_urls.filter(Boolean);
+    }
+
+    if (service?.foto_url) {
+        return [service.foto_url];
+    }
+
+    return [];
+};
+
 export const getServiceById = async (req, res) => {
     const { id } = req.params;
 
@@ -23,6 +35,8 @@ export const getServiceById = async (req, res) => {
             ...service,
             id: service._id?.toString(),
             numero_pedido: service.numero_pedido ?? null,
+            foto_url: service.foto_url ?? normalizePhotoUrls(service)[0] ?? null,
+            fotos_urls: normalizePhotoUrls(service),
         };
 
         console.log(chalk.blue(`Sistema 💻 : Serviço encontrado: ${id} 🔍`));

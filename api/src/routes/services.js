@@ -1,5 +1,5 @@
 import express from "express";
-import upload from "../middlewares/upload.js";
+import { uploadServiceConclusionPhotos } from "../middlewares/upload.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import {
     createService,
@@ -9,6 +9,7 @@ import {
     getServices,
     getServicesAdminCompleto,
     getServiceById,
+    getServicePhoto,
     updateService,
     deleteService,
     finalizeService,
@@ -435,6 +436,27 @@ router.get("/services/:id", getServiceById);
 
 /**
  * @swagger
+ * /api/uploads/services/{fileId}:
+ *   get:
+ *     summary: Baixar foto de serviço armazenada no MongoDB
+ *     tags: [Serviços]
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do arquivo no GridFS
+ *     responses:
+ *       200:
+ *         description: Conteúdo binário da imagem
+ *       404:
+ *         description: Foto não encontrada
+ */
+router.get("/uploads/services/:fileId", getServicePhoto);
+
+/**
+ * @swagger
  * /api/services/{id}:
  *   patch:
  *     summary: Atualizar serviço
@@ -456,14 +478,55 @@ router.get("/services/:id", getServiceById);
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             description: Payload multipart para concluir com checklist, assinatura e foto
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [aguardando, atribuido, concluido, nao_realizado]
+ *               checklist:
+ *                 oneOf:
+ *                   - type: string
+ *                     description: Array JSON serializado com os itens do checklist
+ *                   - type: array
+ *                     items:
+ *                       type: string
+ *               assinatura:
+ *                 type: string
+ *                 description: Assinatura em base64 ou URL já hospedada
+ *               foto:
+ *                 type: array
+ *                 maxItems: 2
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Envie 1 ou 2 imagens nos formatos image/jpeg, image/jpg, image/png, image/webp, image/heic ou image/heif, com até 10MB por arquivo
  *     responses:
  *       200:
  *         description: Serviço atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 foto_url:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Primeira foto para compatibilidade retroativa
+ *                 fotos_urls:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       400:
+ *         description: Erro de validação do payload ou do upload
  *       404:
  *         description: Serviço não encontrado
  */
-router.patch("/services/:id", upload.single("foto"), updateService);
+router.patch("/services/:id", uploadServiceConclusionPhotos, updateService);
 
 /**
  * @swagger

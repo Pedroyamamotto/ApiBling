@@ -114,6 +114,11 @@ export const getServicesAdminLista = async (req, res) => {
 
             const cliente = clienteMap.get(String(service.cliente_id)) || null;
             const tecnico = tecnicoMap.get(String(service.tecnico_id)) || null;
+            const fotosUrls = Array.isArray(service.fotos_urls) && service.fotos_urls.length > 0
+                ? service.fotos_urls.filter(Boolean)
+                : service.foto_url
+                    ? [service.foto_url]
+                    : [];
 
             const enderecoCliente = cliente
                 ? [
@@ -155,7 +160,8 @@ export const getServicesAdminLista = async (req, res) => {
                 checkin_data: service.checkin_data ?? null,
                 concluido_em: service.concluido_em ?? null,
                 checklist: Array.isArray(service.checklist) ? service.checklist : [],
-                foto_url: service.foto_url ?? null,
+                foto_url: service.foto_url ?? fotosUrls[0] ?? null,
+                fotos_urls: fotosUrls,
                 assinatura_url: service.assinatura_url ?? null,
                 motivo_nao_realizacao:
                     service.motivo_nao_realizacao || service.nao_realizado_motivo || null,

@@ -2,10 +2,22 @@ import yup from "yup";
 import chalk from "chalk";
 import { getDb } from "../../db.js";
 import { ObjectId } from "mongodb";
-import path from "node:path";
-import { promises as fs } from "node:fs";
+import {
+    deleteServicePhotos,
+    saveServicePhotos,
+} from "../../services/servicePhotoStorage.js";
 
-const UPLOAD_RELATIVE_DIR = path.join("public", "uploads", "services");
+const normalizeStoredPhotoUrls = (service = {}) => {
+    if (Array.isArray(service.fotos_urls) && service.fotos_urls.length > 0) {
+        return service.fotos_urls.filter(Boolean);
+    }
+
+    if (service.foto_url) {
+        return [service.foto_url];
+    }
+
+    return [];
+};
 
 const parseChecklistInput = (checklist) => {
     if (checklist === undefined || checklist === null || checklist === "") {
@@ -25,23 +37,6 @@ const parseChecklistInput = (checklist) => {
     }
 
     throw new Error("Formato inválido para checklist");
-};
-
-const saveUploadedPhoto = async (file) => {
-    if (!file) {
-        return undefined;
-    }
-
-    const uploadAbsoluteDir = path.resolve(process.cwd(), "api", UPLOAD_RELATIVE_DIR);
-    await fs.mkdir(uploadAbsoluteDir, { recursive: true });
-
-    const ext = file.mimetype === "image/png" ? "png" : "jpg";
-    const fileName = `service-${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
-    const destination = path.join(uploadAbsoluteDir, fileName);
-
-    await fs.writeFile(destination, file.buffer);
-
-    return `/uploads/services/${fileName}`;
 };
 
 export const updateService = async (req, res) => {
@@ -115,8 +110,23 @@ export const updateService = async (req, res) => {
                 return res.status(400).json({ message: "Assinatura é obrigatória para concluir serviço" });
             }
 
-            if (isMultipart && req.file) {
-                updateData.foto_url = await saveUploadedPhoto(req.file);
+            if (isMultipart && Array.isArray(req.files) && req.files.length > 0) {
+                try {
+                    const uploadedPhotos = await saveServicePhotos(req.files, id);
+                    updateData.fotos_urls = uploadedPhotos.map((photo) => photo.url);
+                    updateData.foto_url = updateData.fotos_urls[0] ?? null;
+
+                    const previousPhotoUrls = normalizeStoredPhotoUrls(existingService);
+                    if (previousPhotoUrls.length > 0) {
+                        await deleteServicePhotos(previousPhotoUrls);
+                    }
+                } catch (error) {
+                    console.error("Erro ao salvar fotos da conclusão do serviço no MongoDB:", {
+                        serviceId: id,
+                        message: error.message,
+                    });
+                    return res.status(500).json({ message: "Erro ao salvar fotos do serviço" });
+                }
             }
 
             updateData.concluido_em = new Date();
@@ -144,20 +154,37 @@ export const updateService = async (req, res) => {
             { $set: updateData }
         );
 
+        const finalPhotoUrls = Array.isArray(updateData.fotos_urls)
+            ? updateData.fotos_urls
+            : normalizeStoredPhotoUrls(existingService);
+        const finalPhotoUrl = updateData.foto_url ?? finalPhotoUrls[0] ?? null;
+
         console.log(chalk.yellow(`Sistema 💻 : Serviço Atualizado com Sucesso: ${id} 🔄`));
 
         if (updateData.status === "concluido") {
-            return res.status(200).json({ success: true, message: "Serviço concluído" });
+            return res.status(200).json({
+                success: true,
+                message: "Serviço concluído",
+                foto_url: finalPhotoUrl,
+                fotos_urls: finalPhotoUrls,
+            });
         }
 
         if (updateData.status === "nao_realizado") {
-            return res.status(200).json({ success: true, message: "Serviço atualizado" });
+            return res.status(200).json({
+                success: true,
+                message: "Serviço atualizado",
+                foto_url: finalPhotoUrl,
+                fotos_urls: finalPhotoUrls,
+            });
         }
 
         return res.status(200).json({
             success: true,
             message: "Serviço atualizado com sucesso!",
             modifiedCount: result.modifiedCount,
+            foto_url: finalPhotoUrl,
+            fotos_urls: finalPhotoUrls,
         });
     } catch (error) {
         console.error("Erro ao atualizar serviço:", error);

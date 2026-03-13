@@ -3,6 +3,7 @@ import { MongoClient } from "mongodb";
 
 let cachedClient = null;
 let cachedDb = null;
+let testDbOverride = null;
 
 function resolveDbNameFromUri(uri) {
     try {
@@ -15,6 +16,10 @@ function resolveDbNameFromUri(uri) {
 }
 
 export async function getDb() {
+    if (testDbOverride) {
+        return testDbOverride;
+    }
+
     if (cachedDb) {
         return cachedDb;
     }
@@ -41,4 +46,12 @@ export async function closeDbConnection() {
         cachedClient = null;
         cachedDb = null;
     }
+}
+
+export function setDbForTests(db) {
+    testDbOverride = db;
+}
+
+export function resetDbForTests() {
+    testDbOverride = null;
 }
