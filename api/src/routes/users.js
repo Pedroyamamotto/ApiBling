@@ -4,6 +4,7 @@ import {
 	createUser,
 	loginUser,
 	verifyUser,
+	resendVerificationCode,
 	requestPasswordReset,
 	resetPassword,
 	logoutUser,
@@ -179,6 +180,34 @@ router.post("/users/login", loginUser);
  *         description: Usuário não encontrado
  */
 router.post("/users/verify", verifyUser);
+
+/**
+ * @swagger
+ * /api/users/resend-verification-code:
+ *   post:
+ *     summary: Reenviar código de verificação de conta
+ *     tags: [Usuários]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Novo código enviado por email
+ *       400:
+ *         description: Usuário já verificado ou payload inválido
+ *       404:
+ *         description: Usuário não encontrado
+ */
+router.post("/users/resend-verification-code", resendVerificationCode);
 
 /**
  * @swagger
