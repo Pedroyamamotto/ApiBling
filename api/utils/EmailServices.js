@@ -4,6 +4,18 @@ import path from "path";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+export const renderValidationEmailTemplate = (template, code) => {
+  const renderedTemplate = template
+    .replaceAll("{{validationCode}}", code)
+    .replaceAll("{{code}}", code);
+
+  if (renderedTemplate === template) {
+    console.warn("Template de validação não continha placeholder conhecido para o código");
+  }
+
+  return renderedTemplate;
+};
+
 export async function sendValidationEmail(email, code) {
   if (!resend) {
     console.error("RESEND_API_KEY não configurada, email não enviado");
@@ -18,7 +30,7 @@ export async function sendValidationEmail(email, code) {
     const template = await fs.readFile(templatePath, "utf-8");
 
     // Substituir o placeholder pelo código de verificação
-    const htmlContent = template.replace("{{code}}", code);
+    const htmlContent = renderValidationEmailTemplate(template, code);
 
     // Enviar o e-mail
     await resend.emails.send({
