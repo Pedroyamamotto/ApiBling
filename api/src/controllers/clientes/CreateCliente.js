@@ -3,6 +3,10 @@ import chalk from "chalk";
 import { getDb } from "../../db.js";
 
 function normalizeClientePayload(body) {
+    if (!body || typeof body !== 'object') {
+        return {};
+    }
+    
     const endereco = body.endereco || {};
 
     return {
@@ -25,16 +29,27 @@ function normalizeClientePayload(body) {
 export const createCliente = async (req, res) => {
     const clienteData = normalizeClientePayload(req.body);
 
+    // Validar se body foi recebido
+    if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({ 
+            error: "Body da requisição é obrigatório e não pode estar vazio." 
+        });
+    }
+
     const schema = yup.object().shape({
         nome: yup.string().required(),
         telefone: yup.string().required(),
         cpf: yup.string().required(),
         numero: yup.string().required(),
-        complemento: yup.string(),
+        complemento: yup.string().nullable(true).optional(),
         bairro: yup.string().required(),
         cidade: yup.string().required(),
         estado: yup.string().required(),
         cep: yup.string().required(),
+        celular: yup.string().optional(),
+        email: yup.string().nullable(true).optional(),
+        bling_pedido_id: yup.string().nullable(true).optional(),
+        rua: yup.string().optional(),
     });
 
     try {
