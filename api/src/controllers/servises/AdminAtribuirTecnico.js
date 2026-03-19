@@ -166,19 +166,32 @@ async function runAutomacaoBling({ numeroPedido, tecnico }) {
     const logs = [];
     const onLog = (msg) => logs.push(msg);
     
-    const resultado = await criarOrdem(String(numeroPedido), {
-        salvar: true,
-        headless: IS_PRODUCTION,
-        slowMo: IS_PRODUCTION ? 0 : 150,
-        debug: !IS_PRODUCTION,
-        onLog,
-    });
+    // Definir TECNICO no process.env para que a validação da automação encontre
+    const tecnicoOriginal = process.env.TECNICO;
+    process.env.TECNICO = tecnico;
+    
+    try {
+        const resultado = await criarOrdem(String(numeroPedido), {
+            salvar: true,
+            headless: IS_PRODUCTION,
+            slowMo: IS_PRODUCTION ? 0 : 150,
+            debug: !IS_PRODUCTION,
+            onLog,
+        });
 
-    return {
-        raw: JSON.stringify(resultado),
-        result: resultado,
-        logs,
-    };
+        return {
+            raw: JSON.stringify(resultado),
+            result: resultado,
+            logs,
+        };
+    } finally {
+        // Restaurar valor original
+        if (tecnicoOriginal === undefined) {
+            delete process.env.TECNICO;
+        } else {
+            process.env.TECNICO = tecnicoOriginal;
+        }
+    }
 }
 
 export function setAutomationRunnerForTests(runner) {
@@ -215,10 +228,15 @@ export const adminAtribuirTecnico = async (req, res) => {
         }
 
         const tecnico = await findTecnicoById(usuariosCollection, tecnico_id);
-        const automacaoEnv = getAutomacaoEnv();
-        const tecnicoAutomacao = String(
-            tecnicoNomeInformado || tecnico?.nome || tecnico?.name || process.env.TECNICO || automacaoEnv.TECNICO || tecnico_id
-        ).trim();
+        if (!tecnico) {
+            return res.status(404).json({ message: "Técnico não encontrado com o ID fornecido" });
+        }
+
+        // Usar o nome do técnico do banco, com fallback para o informado na requisição
+        const tecnicoNome = String(tecnicoNomeInformado || tecnico?.nome || tecnico?.name || "").trim();
+        if (!tecnicoNome) {
+            return res.status(400).json({ message: "Nome do técnico não conseguiu ser resolvido. Verifique se o técnico tem um nome definido no sistema." });
+        }
 
         const updateData = {
             tecnico_id,
@@ -244,7 +262,7 @@ export const adminAtribuirTecnico = async (req, res) => {
         try {
             execResult = await runner({
                 numeroPedido,
-                tecnico: tecnicoAutomacao,
+                tecnico: tecnicoNome,
             });
         } catch (primaryError) {
             const msg = String(primaryError?.message || "").toLowerCase();
@@ -268,7 +286,7 @@ export const adminAtribuirTecnico = async (req, res) => {
 
             execResult = await runner({
                 numeroPedido: String(service.pedido_id),
-                tecnico: tecnicoAutomacao,
+                tecnico: tecnicoNome,
             });
 
             execResult.result = {
@@ -299,7 +317,7 @@ export const adminAtribuirTecnico = async (req, res) => {
             success: true,
             message: "Técnico atribuído e OS criada com sucesso!",
             service: serializeService(updatedService, id),
-            tecnico_utilizado: tecnicoAutomacao,
+            tecnico_utilizado: tecnicoNome,
             automacao: execResult?.result,
         });
     } catch (error) {
