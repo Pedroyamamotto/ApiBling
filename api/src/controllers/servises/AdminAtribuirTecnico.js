@@ -182,7 +182,12 @@ async function resolveNomeCliente(service, clientesCollection) {
 
 async function runAutomacaoBling({ numeroPedido, tecnico, debug = true, headless = false, slowMo = 150 }) {
     return new Promise((resolve, reject) => {
-        const args = ["run", "os", "--", String(numeroPedido), "--salvar"];
+        const criarOSScript = path.join(AUTOMACAO_DIR, "criarOS.js");
+        if (!existsSync(criarOSScript)) {
+            return reject(new Error(`Script criarOS.js nao encontrado em ${AUTOMACAO_DIR}`));
+        }
+
+        const args = [String(numeroPedido), "--salvar"];
         if (headless) args.push("--headless");
         if (debug) args.push("--debug");
         if (slowMo === 0) {
@@ -193,16 +198,11 @@ async function runAutomacaoBling({ numeroPedido, tecnico, debug = true, headless
         const childEnv = {
             ...process.env,
             NODE_PATH: nodeModulesPath,
+            NODE_OPTIONS: `--preserve-symlinks --preserve-symlinks-main`,
             ...(tecnico ? { TECNICO: tecnico } : {}),
         };
 
-        const isWindows = process.platform === "win32";
-        const command = isWindows ? "cmd.exe" : "npm";
-        const commandArgs = isWindows
-            ? ["/d", "/s", "/c", `npm.cmd ${args.join(" ")}`]
-            : args;
-
-        const proc = spawn(command, commandArgs, {
+        const proc = spawn(process.execPath, [criarOSScript, ...args], {
             cwd: AUTOMACAO_DIR,
             env: childEnv,
             shell: false,
