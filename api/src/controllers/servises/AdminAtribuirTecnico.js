@@ -189,8 +189,10 @@ async function runAutomacaoBling({ numeroPedido, tecnico, debug = true, headless
             args.push("--slow", "0");
         }
 
+        const nodeModulesPath = path.join(AUTOMACAO_DIR, "node_modules");
         const childEnv = {
             ...process.env,
+            NODE_PATH: nodeModulesPath,
             ...(tecnico ? { TECNICO: tecnico } : {}),
         };
 
@@ -254,11 +256,12 @@ async function runCapturaNumeroOsSeparada({ numeroPedido, nomeCliente }) {
             return reject(new Error("nomeCliente nao informado para executar buscarOS.js"));
         }
 
+        const nodeModulesPath = path.join(AUTOMACAO_DIR, "node_modules");
         const args = [scriptPath, String(numeroPedido), nomeClienteNormalizado];
 
         const proc = spawn(process.execPath, args, {
             cwd: AUTOMACAO_DIR,
-            env: { ...process.env },
+            env: { ...process.env, NODE_PATH: nodeModulesPath },
             shell: false,
             windowsHide: false,
         });

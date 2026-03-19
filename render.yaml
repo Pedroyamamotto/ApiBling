@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     region: oregon
-    buildCommand: npm install && cd automacao && npm install && npx playwright install chromium --with-deps
+    buildCommand: npm install && cd automacao && npm install && npx playwright install chromium --with-deps && cd ..
     startCommand: node api/index.js
     envVars:
       - key: NODE_ENV

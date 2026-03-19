@@ -54,19 +54,9 @@ export const createService = async (req, res) => {
     try {
         const db = await getDb();
         const servicosCollection = db.collection("servicos");
-        // Se não vier ordem_de_servico, gerar automaticamente
-        if (!ordem_de_servico) {
-            const ultimo = await servicosCollection.find({ ordem_de_servico: { $exists: true } })
-                .sort({ ordem_de_servico: -1 })
-                .limit(1)
-                .toArray();
-            let novoNumero = 1;
-            if (ultimo.length && ultimo[0].ordem_de_servico) {
-                const parsed = parseInt(ultimo[0].ordem_de_servico, 10);
-                if (!isNaN(parsed)) novoNumero = parsed + 1;
-            }
-            ordem_de_servico = String(novoNumero).padStart(4, '0');
-        }
+        // ordem_de_servico sempre começa vazio/null
+        ordem_de_servico = ordem_de_servico || null;
+        
         const result = await servicosCollection.insertOne({
             numero_pedido: String(numero_pedido),
             pedido_id,

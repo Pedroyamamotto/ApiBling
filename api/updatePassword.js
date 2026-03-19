@@ -3,11 +3,15 @@
 
 import { MongoClient } from 'mongodb';
 import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+
+// Carregar variáveis de ambiente
+dotenv.config({ path: '../.env' });
 
 // Configurações do banco
-const uri = 'mongodb+srv://yama:yamamotoo2026@cluster0.zdmdddy.mongodb.net/?appName=Cluster0';
-const dbName = 'DBservisos';
-const collection = 'usuários'; // Corrigido para o nome da coleção
+const uri = process.env.MONGODB_URI || 'mongodb+srv://yama:yamamotoo2026@cluster0.zdmdddy.mongodb.net/?appName=Cluster0';
+const dbName = process.env.MONGODB_DB || 'DBservisos';
+const collection = process.env.MONGODB_COLLECTION || 'usuários'; // Corrigido para o nome da coleção
 
 async function updatePassword(email, novaSenha) {
   const client = new MongoClient(uri);
