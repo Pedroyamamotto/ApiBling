@@ -1,5 +1,5 @@
-const fs = require('node:fs');
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 function garantirPastaEvidencias() {
     const pasta = path.join(process.cwd(), 'evidencias');
@@ -54,7 +54,7 @@ async function salvarCheckpointTela(page, nomeArquivo) {
     return arquivoImagem;
 }
 
-module.exports = {
+export {
     garantirPastaEvidencias,
     salvarErroTela,
     salvarCamposOS,

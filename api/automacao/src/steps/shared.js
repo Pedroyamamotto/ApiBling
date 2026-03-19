@@ -70,7 +70,7 @@ async function preencherBuscaViaJS(scope, numeroPedido) {
     }, String(numeroPedido));
 }
 
-module.exports = {
+export {
     clicarPrimeiroDisponivel,
     preencherPrimeiroDisponivel,
     preencherBuscaViaJS,

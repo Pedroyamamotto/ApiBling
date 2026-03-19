@@ -1,17 +1,17 @@
-const { chromium } = require('playwright');
-const { validarVariaveisObrigatorias } = require('../config');
-const { executarComRetry } = require('../utils/core');
-const { salvarErroTela, salvarCamposOS } = require('../utils/evidencias');
-const { fazerLogin } = require('../steps/login');
-const { abrirTelaVendas, preencherFiltroPedido, abrirTelaGerarOSNoPedido, obterNomeClienteDoPedido } = require('../steps/pedido');
-const {
+import { chromium } from 'playwright';
+import { validarVariaveisObrigatorias } from '../config.js';
+import { executarComRetry } from '../utils/core.js';
+import { salvarErroTela, salvarCamposOS } from '../utils/evidencias.js';
+import { fazerLogin } from '../steps/login.js';
+import { abrirTelaVendas, preencherFiltroPedido, abrirTelaGerarOSNoPedido, obterNomeClienteDoPedido } from '../steps/pedido.js';
+import {
     preencherTecnicoDaOS,
     salvarOS,
     tratarPopupConfirmacaoOS,
     capturarNumeroOSNaLista,
     obterTextoPrimeiroDisponivel,
     coletarCamposPreenchidosDaOS,
-} = require('../steps/os');
+} from '../steps/os.js';
 
 async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
     const log = opcoes.onLog || console.log;
@@ -34,7 +34,8 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
 
     log('[DEBUG] Abrindo login...');
     const browser = await chromium.launch({
-        headless: opcoes.headless ?? false,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
         slowMo: opcoes.slowMo ?? 150,
     });
     const context = await browser.newContext();
@@ -219,4 +220,4 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
     }
 }
 
-module.exports = criarOrdemDeServico;
+export default criarOrdemDeServico;

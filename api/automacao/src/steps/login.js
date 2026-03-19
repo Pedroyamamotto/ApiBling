@@ -1,5 +1,5 @@
-const { BLING_LOGIN_URL } = require('../config');
-const { clicarPrimeiroDisponivel, preencherPrimeiroDisponivel } = require('./shared');
+import { BLING_LOGIN_URL } from '../config.js';
+import { clicarPrimeiroDisponivel, preencherPrimeiroDisponivel } from './shared.js';
 
 async function aguardarCampoVisivel(page, seletores, timeout = 20000) {
     const inicio = Date.now();
@@ -63,6 +63,6 @@ async function fazerLogin(page, credenciais) {
     await page.waitForLoadState('networkidle');
 }
 
-module.exports = {
+export {
     fazerLogin,
 };

@@ -1,12 +1,12 @@
-function sleep(ms) {
+export function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function escapeRegex(texto) {
+export function escapeRegex(texto) {
     return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function normalizarTexto(texto) {
+export function normalizarTexto(texto) {
     return String(texto || '')
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
@@ -14,7 +14,7 @@ function normalizarTexto(texto) {
         .trim();
 }
 
-async function executarComRetry(execucao, opcoes = {}) {
+export async function executarComRetry(execucao, opcoes = {}) {
     const tentativas = opcoes.tentativas ?? 3;
     const atrasoMs = opcoes.atrasoMs ?? 1200;
     const descricao = opcoes.descricao ?? 'etapa';
@@ -36,10 +36,3 @@ async function executarComRetry(execucao, opcoes = {}) {
 
     throw new Error(`[${descricao}] ${ultimoErro?.message || 'falha desconhecida'}`);
 }
-
-module.exports = {
-    sleep,
-    escapeRegex,
-    normalizarTexto,
-    executarComRetry,
-};

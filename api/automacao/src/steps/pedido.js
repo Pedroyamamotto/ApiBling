@@ -1,4 +1,4 @@
-const { BLING_VENDAS_URL } = require('../config');
+import { BLING_VENDAS_URL } from '../config.js';
 
 async function fecharInterferenciasDaTela(page) {
     const seletoresFechar = [
@@ -146,7 +146,7 @@ async function obterNomeClienteDoPedido(page, numeroPedido) {
     return nomeCliente;
 }
 
-module.exports = {
+export {
     abrirTelaVendas,
     preencherFiltroPedido,
     abrirTelaGerarOSNoPedido,

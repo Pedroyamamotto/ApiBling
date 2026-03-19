@@ -1,4 +1,4 @@
-const { normalizarTexto, sleep } = require('../utils/core');
+import { normalizarTexto, sleep } from '../utils/core.js';
 
 function obterCampoTecnicoOS(page) {
     // O campo correto tem placeholder exato "Digite um nome de um técnico".
@@ -465,7 +465,7 @@ async function coletarCamposPreenchidosDaOS(page) {
     });
 }
 
-module.exports = {
+export {
     preencherTecnicoDaOS,
     salvarOS,
     tratarPopupConfirmacaoOS,
