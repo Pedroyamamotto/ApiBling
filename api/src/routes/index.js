@@ -1,5 +1,6 @@
 import express from 'express';
 import servicesRoutes from './services.js';
+import servicesBlingRoutes from './servicesBling.js';
 import pedidosRoutes from './pedidos.js';
 import clientesRoutes from './clientes.js';
 import usersRoutes from './users.js';
@@ -8,6 +9,7 @@ const router = express.Router();
 
 // Rotas de serviços
 router.use('/', servicesRoutes);
+router.use('/', servicesBlingRoutes);
 
 // Rotas de pedidos
 router.use('/', pedidosRoutes);

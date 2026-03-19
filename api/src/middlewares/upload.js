@@ -2,6 +2,7 @@ import multer from "multer";
 
 export const MAX_SERVICE_PHOTOS = 2;
 export const MAX_SERVICE_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
+export const MAX_SERVICE_CONTEXT_PHOTOS = 5;
 export const ALLOWED_SERVICE_PHOTO_MIME_TYPES = new Set([
 	"image/jpeg",
 	"image/jpg",
@@ -28,25 +29,29 @@ const createUploadValidationError = (code, message) => {
 	return error;
 };
 
-const upload = multer({
-	storage,
-	limits: {
-		fileSize: MAX_SERVICE_PHOTO_SIZE_BYTES,
-		files: MAX_SERVICE_PHOTOS,
-	},
-	fileFilter: (req, file, callback) => {
-		if (!ALLOWED_SERVICE_PHOTO_MIME_TYPES.has(file.mimetype)) {
-			return callback(
-				createUploadValidationError(
-					"INVALID_FILE_TYPE",
-					"Formato de arquivo inválido. Envie apenas image/jpeg, image/jpg, image/png, image/webp, image/heic ou image/heif."
-				)
-			);
-		}
+const createUploader = (maxFiles) =>
+	multer({
+		storage,
+		limits: {
+			fileSize: MAX_SERVICE_PHOTO_SIZE_BYTES,
+			files: maxFiles,
+		},
+		fileFilter: (req, file, callback) => {
+			if (!ALLOWED_SERVICE_PHOTO_MIME_TYPES.has(file.mimetype)) {
+				return callback(
+					createUploadValidationError(
+						"INVALID_FILE_TYPE",
+						"Formato de arquivo inválido. Envie apenas image/jpeg, image/jpg, image/png, image/webp, image/heic ou image/heif."
+					)
+				);
+			}
 
-		return callback(null, true);
-	},
-});
+			return callback(null, true);
+		},
+	});
+
+const serviceConclusionUpload = createUploader(MAX_SERVICE_PHOTOS);
+const serviceContextUpload = createUploader(MAX_SERVICE_CONTEXT_PHOTOS);
 
 const getUploadErrorResponse = (error) => {
 	if (error?.code === "INVALID_FILE_TYPE") {
@@ -79,7 +84,7 @@ const getUploadErrorResponse = (error) => {
 };
 
 export const uploadServiceConclusionPhotos = (req, res, next) => {
-	upload.array("foto", MAX_SERVICE_PHOTOS)(req, res, (error) => {
+	serviceConclusionUpload.array("foto", MAX_SERVICE_PHOTOS)(req, res, (error) => {
 		if (!error) {
 			return next();
 		}
@@ -96,4 +101,21 @@ export const uploadServiceConclusionPhotos = (req, res, next) => {
 	});
 };
 
-export default upload;
+export const uploadServiceContextPhotos = (req, res, next) => {
+	serviceContextUpload.array("foto", MAX_SERVICE_CONTEXT_PHOTOS)(req, res, (error) => {
+		if (!error) {
+			return next();
+		}
+
+		if (error?.code === "LIMIT_FILE_COUNT" || error?.code === "LIMIT_UNEXPECTED_FILE") {
+			return res.status(400).json({
+				message: `E permitido enviar no maximo ${MAX_SERVICE_CONTEXT_PHOTOS} imagens no campo foto.`,
+			});
+		}
+
+		const response = getUploadErrorResponse(error);
+		return res.status(response.status).json(response.body);
+	});
+};
+
+export default serviceConclusionUpload;

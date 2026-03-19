@@ -14,6 +14,18 @@ const normalizePhotoUrls = (service) => {
     return [];
 };
 
+const normalizeContextPhotos = (service) => {
+    const context = service?.fotos_contexto || {};
+
+    const portaCliente = Array.isArray(context.porta_cliente) ? context.porta_cliente.filter(Boolean) : [];
+    const instalacoes = Array.isArray(context.instalacoes) ? context.instalacoes.filter(Boolean) : [];
+
+    return {
+        porta_cliente: portaCliente,
+        instalacoes: instalacoes,
+    };
+};
+
 export const getServiceById = async (req, res) => {
     const { id } = req.params;
 
@@ -31,12 +43,16 @@ export const getServiceById = async (req, res) => {
             return res.status(404).json({ error: "Serviço não encontrado" });
         }
 
+        const fotosContexto = normalizeContextPhotos(service);
         const serviceFormatted = {
             ...service,
             id: service._id?.toString(),
             numero_pedido: service.numero_pedido ?? null,
             foto_url: service.foto_url ?? normalizePhotoUrls(service)[0] ?? null,
             fotos_urls: normalizePhotoUrls(service),
+            fotos_contexto: fotosContexto,
+            fotos_porta_cliente_urls: fotosContexto.porta_cliente.map((item) => item?.url).filter(Boolean),
+            fotos_instalacoes_urls: fotosContexto.instalacoes.map((item) => item?.url).filter(Boolean),
         };
 
         console.log(chalk.blue(`Sistema 💻 : Serviço encontrado: ${id} 🔍`));

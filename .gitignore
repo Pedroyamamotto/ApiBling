@@ -34,6 +34,15 @@ coverage/
 *.lcov
 
 # Outros
+# Automação Bling (incluí­da no projeto para deploy)
+automacao/node_modules/
+automacao/evidencias/
+automacao/.env
+evidencias/
+api/tests/test-image.jpg
+api/tests/test-upload.jpg
+.tmp-*
+
 *.bak
 *.tmp
 .vercel

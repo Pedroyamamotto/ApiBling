@@ -119,21 +119,31 @@ export const getServicesAdminLista = async (req, res) => {
                 : service.foto_url
                     ? [service.foto_url]
                     : [];
+            const fotosContexto = service.fotos_contexto && typeof service.fotos_contexto === "object"
+                ? service.fotos_contexto
+                : {};
+            const fotosPortaCliente = Array.isArray(fotosContexto.porta_cliente)
+                ? fotosContexto.porta_cliente.filter(Boolean)
+                : [];
+            const fotosInstalacoes = Array.isArray(fotosContexto.instalacoes)
+                ? fotosContexto.instalacoes.filter(Boolean)
+                : [];
 
             const enderecoCliente = cliente
-                ? [
-                      cliente.rua,
-                      cliente.numero,
-                      cliente.complemento,
-                      cliente.bairro,
-                      cliente.cidade,
-                      cliente.estado,
-                  ]
-                      .filter(Boolean)
-                      .join(", ")
-                : null;
+                                ? [
+                                            cliente.rua,
+                                            cliente.numero,
+                                            cliente.complemento,
+                                            cliente.bairro,
+                                            cliente.cidade,
+                                            cliente.estado,
+                                    ]
+                                            .filter(Boolean)
+                                            .join(", ")
+                                : null;
 
             return {
+                ordem_de_servico: service.ordem_de_servico ?? null,
                 id: serviceId,
                 numero_pedido: service.numero_pedido ?? null,
                 pedido_id: service.pedido_id ?? null,
@@ -162,9 +172,16 @@ export const getServicesAdminLista = async (req, res) => {
                 checklist: Array.isArray(service.checklist) ? service.checklist : [],
                 foto_url: service.foto_url ?? fotosUrls[0] ?? null,
                 fotos_urls: fotosUrls,
+                fotos_contexto: {
+                    porta_cliente: fotosPortaCliente,
+                    instalacoes: fotosInstalacoes,
+                },
+                fotos_porta_cliente_urls: fotosPortaCliente.map((item) => item?.url).filter(Boolean),
+                fotos_instalacoes_urls: fotosInstalacoes.map((item) => item?.url).filter(Boolean),
                 assinatura_url: service.assinatura_url ?? null,
                 motivo_nao_realizacao:
                     service.motivo_nao_realizacao || service.nao_realizado_motivo || null,
+                ordem_de_servico: service.ordem_de_servico ?? null,
             };
         });
 

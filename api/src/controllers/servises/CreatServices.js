@@ -15,13 +15,16 @@ export const createService = async (req, res) => {
         cliente_id: yup.string().required(),
         tecnico_id: yup.string().required(),
         status: yup.string().required(),
-        data_agendada: yup.date().required(),
+        data_agendada: yup.mixed().test('is-date', 'data_agendada inválida', v => v === null || !v || !isNaN(new Date(v))) .required(),
         hora_agendada: yup.string().required(),
         descricao_servico: yup.string().required(),
-        observacoes: yup.string(),
-        checkin_data: yup.date(),
-        concluido_em: yup.date(),
-        nao_realizado_motivo: yup.string(),
+        observacoes: yup.string().nullable(),
+        checkin_data: yup.mixed().test('is-date', 'checkin_data inválido', v => v === null || !v || !isNaN(new Date(v))).nullable(),
+        concluido_em: yup.mixed().test('is-date', 'concluido_em inválido', v => v === null || !v || !isNaN(new Date(v))).nullable(),
+        nao_realizado_motivo: yup.string().nullable(),
+        ordem_de_servico: yup.string().nullable(),
+        created_at: yup.mixed().test('is-date', 'created_at inválido', v => v === null || !v || !isNaN(new Date(v))).nullable(),
+        updated_at: yup.mixed().test('is-date', 'updated_at inválido', v => v === null || !v || !isNaN(new Date(v))).nullable(),
     });
 
     try {
@@ -30,7 +33,7 @@ export const createService = async (req, res) => {
         return res.status(400).json({ error: error.errors });
     }
 
-    const {
+    let {
         numero_pedido,
         pedido_id,
         cliente_id,
@@ -43,12 +46,27 @@ export const createService = async (req, res) => {
         checkin_data,
         concluido_em,
         nao_realizado_motivo,
+        ordem_de_servico,
+        created_at,
+        updated_at,
     } = servicePayload;
 
     try {
         const db = await getDb();
         const servicosCollection = db.collection("servicos");
-
+        // Se não vier ordem_de_servico, gerar automaticamente
+        if (!ordem_de_servico) {
+            const ultimo = await servicosCollection.find({ ordem_de_servico: { $exists: true } })
+                .sort({ ordem_de_servico: -1 })
+                .limit(1)
+                .toArray();
+            let novoNumero = 1;
+            if (ultimo.length && ultimo[0].ordem_de_servico) {
+                const parsed = parseInt(ultimo[0].ordem_de_servico, 10);
+                if (!isNaN(parsed)) novoNumero = parsed + 1;
+            }
+            ordem_de_servico = String(novoNumero).padStart(4, '0');
+        }
         const result = await servicosCollection.insertOne({
             numero_pedido: String(numero_pedido),
             pedido_id,
@@ -62,8 +80,9 @@ export const createService = async (req, res) => {
             checkin_data: checkin_data ? new Date(checkin_data) : null,
             concluido_em: concluido_em ? new Date(concluido_em) : null,
             nao_realizado_motivo: nao_realizado_motivo || null,
-            created_at: new Date(),
-            updated_at: new Date(),
+            ordem_de_servico: ordem_de_servico,
+            created_at: created_at ? new Date(created_at) : new Date(),
+            updated_at: updated_at ? new Date(updated_at) : new Date(),
         });
 
         console.log(chalk.green(`Sistema 💻 : Serviço Cadastrado com Sucesso: ${result.insertedId} ✅`));
@@ -71,6 +90,7 @@ export const createService = async (req, res) => {
         return res.status(201).json({
             message: "Serviço criado com sucesso!",
             serviceId: result.insertedId,
+            ordem_de_servico: ordem_de_servico || null,
         });
     } catch (error) {
         console.error("Erro ao criar serviço:", error);

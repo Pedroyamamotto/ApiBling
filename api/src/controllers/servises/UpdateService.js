@@ -105,21 +105,27 @@ export const updateService = async (req, res) => {
             if (!updateData.checklist || !Array.isArray(updateData.checklist) || updateData.checklist.length === 0) {
                 return res.status(400).json({ message: "Checklist é obrigatório para concluir serviço" });
             }
-
             if (!updateData.assinatura && !updateData.assinatura_url) {
                 return res.status(400).json({ message: "Assinatura é obrigatória para concluir serviço" });
             }
-
             if (isMultipart && Array.isArray(req.files) && req.files.length > 0) {
                 try {
                     const uploadedPhotos = await saveServicePhotos(req.files, id);
                     updateData.fotos_urls = uploadedPhotos.map((photo) => photo.url);
                     updateData.foto_url = updateData.fotos_urls[0] ?? null;
-
                     const previousPhotoUrls = normalizeStoredPhotoUrls(existingService);
                     if (previousPhotoUrls.length > 0) {
                         await deleteServicePhotos(previousPhotoUrls);
                     }
+                    // Envia para o n8n como tipo "instalacao" se houver fotos
+                    const { cliente_id, numero_pedido } = existingService;
+                    const { saveServiceContextPhotos } = await import("../../services/servicePhotoStorage.js");
+                    await saveServiceContextPhotos(req.files, {
+                        serviceId: id,
+                        tipo: "instalacao",
+                        numeroPedido: numero_pedido,
+                        idCliente: cliente_id,
+                    });
                 } catch (error) {
                     console.error("Erro ao salvar fotos da conclusão do serviço no MongoDB:", {
                         serviceId: id,
@@ -128,7 +134,6 @@ export const updateService = async (req, res) => {
                     return res.status(500).json({ message: "Erro ao salvar fotos do serviço" });
                 }
             }
-
             updateData.concluido_em = new Date();
         }
 

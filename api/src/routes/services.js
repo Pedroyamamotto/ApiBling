@@ -1,6 +1,10 @@
 import express from "express";
-import { uploadServiceConclusionPhotos } from "../middlewares/upload.js";
+import {
+    uploadServiceConclusionPhotos,
+    uploadServiceContextPhotos,
+} from "../middlewares/upload.js";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
+import { requireAdminOrGerente } from "../middlewares/requireAdminOrGerente.js";
 import {
     createService,
     adminAtribuirTecnico,
@@ -10,6 +14,8 @@ import {
     getServicesAdminCompleto,
     getServiceById,
     getServicePhoto,
+    getServiceContextPhoto,
+    uploadServiceContextPhotos as uploadServiceContextPhotosController,
     updateService,
     deleteService,
     finalizeService,
@@ -20,6 +26,9 @@ import {
     getServicosPorDia,
     getProximasVisitas,
     checkinService,
+    getServiceContextPhotos,
+    getServiceInstalacaoPhotos,
+    getServiceAllPhotos,
 } from "../controllers/servises/index.js";
 
 const router = express.Router();
@@ -309,6 +318,62 @@ router.get("/admin/services", requireAdmin, getServicesAdminLista);
 
 /**
  * @swagger
+ * /api/gerente/services:
+ *   get:
+ *     summary: Listar serviços com dados enriquecidos (admin ou gerente)
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: header
+ *         name: x-admin-key
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Chave de admin (quando configurada)
+ *       - in: header
+ *         name: x-user-type
+ *         schema:
+ *           type: string
+ *           enum: [admin, gerente]
+ *         required: false
+ *         description: Fallback por perfil de usuário
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [aguardando, atribuido, concluido, nao_realizado]
+ *       - in: query
+ *         name: tecnico_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: cliente_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: numero_pedido
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *     responses:
+ *       200:
+ *         description: Lista paginada de serviços
+ *       403:
+ *         description: Acesso negado
+ */
+router.get("/gerente/services", requireAdminOrGerente, getServicesAdminLista);
+
+/**
+ * @swagger
  * /api/services/{id}/admin/atribuir:
  *   patch:
  *     summary: Atribuir técnico e agendar visita (admin)
@@ -454,6 +519,134 @@ router.get("/services/:id", getServiceById);
  *         description: Foto não encontrada
  */
 router.get("/uploads/services/:fileId", getServicePhoto);
+
+/**
+ * @swagger
+ * /api/uploads/services/context/{fileId}:
+ *   get:
+ *     summary: Baixar foto de contexto do serviço armazenada no MongoDB
+ *     tags: [Serviços]
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do arquivo de contexto no GridFS
+ *     responses:
+ *       200:
+ *         description: Conteúdo binário da imagem de contexto
+ *       404:
+ *         description: Foto de contexto não encontrada
+ */
+router.get("/uploads/services/context/:fileId", getServiceContextPhoto);
+
+/**
+ * @swagger
+ * /api/admin/services/{id}/fotos-contexto:
+ *   post:
+ *     summary: Enviar fotos de contexto (porta do cliente)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do serviço
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - foto
+ *             properties:
+ *               foto:
+ *                 type: array
+ *                 maxItems: 5
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Fotos de contexto enviadas com sucesso
+ *       400:
+ *         description: Upload inválido
+ *       404:
+ *         description: Serviço não encontrado
+ */
+router.post(
+    "/admin/services/:id/fotos-contexto",
+    requireAdmin,
+    uploadServiceContextPhotos,
+    uploadServiceContextPhotosController
+);
+
+/**
+ * @swagger
+ * /api/admin/services/{id}/fotos-contexto:
+ *   get:
+ *     summary: Listar fotos de contexto (porta do cliente)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de fotos de contexto
+ *       404:
+ *         description: Serviço não encontrado
+ */
+router.get("/admin/services/:id/fotos-contexto", requireAdmin, getServiceContextPhotos);
+
+/**
+ * @swagger
+ * /api/services/{id}/fotos-instalacao:
+ *   get:
+ *     summary: Listar fotos de instalação do serviço
+ *     tags: [Serviços]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de fotos de instalação
+ *       404:
+ *         description: Serviço não encontrado
+ */
+router.get("/services/:id/fotos-instalacao", getServiceInstalacaoPhotos);
+
+/**
+ * @swagger
+ * /api/services/{id}/fotos:
+ *   get:
+ *     summary: Listar todas as fotos relacionadas ao serviço
+ *     tags: [Serviços]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Fotos consolidadas (porta_cliente, instalacoes, conclusao)
+ *       404:
+ *         description: Serviço não encontrado
+ */
+router.get("/services/:id/fotos", getServiceAllPhotos);
 
 /**
  * @swagger

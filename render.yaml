@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     region: oregon
-    buildCommand: npm install
+    buildCommand: npm install && cd automacao && npm install && npx playwright install chromium --with-deps
     startCommand: node api/index.js
     envVars:
       - key: NODE_ENV
@@ -19,3 +19,25 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: BLING_USER
+        sync: false
+      - key: BLING_PASSWORD
+        sync: false
+      - key: TECNICO
+        sync: false
+      - key: SERVICE_CONTEXT_STORAGE_PROVIDER
+        value: google-drive
+      - key: SERVICE_CONTEXT_ROOT_FOLDER
+        value: AppYamma
+      - key: GOOGLE_DRIVE_PARENT_FOLDER_ID
+        sync: false
+      - key: GOOGLE_DRIVE_ACCESS_TOKEN
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_TOKEN_URI
+        value: https://oauth2.googleapis.com/token
