@@ -11,6 +11,7 @@ const CURRENT_FILE = fileURLToPath(import.meta.url);
 const CURRENT_DIR = path.dirname(CURRENT_FILE);
 const PROJECT_ROOT_DIR = path.resolve(CURRENT_DIR, "../../../../..");
 const AUTOMACAO_FLOWS_DIR = path.resolve(PROJECT_ROOT_DIR, "automacao/src/flows");
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 let criarOrdemDeServico = null;
 
@@ -35,27 +36,6 @@ const schema = yup.object().shape({
         .required("hora_agendada é obrigatória"),
     observacoes: yup.string(),
 });
-
-const CURRENT_FILE = fileURLToPath(import.meta.url);
-const CURRENT_DIR = path.dirname(CURRENT_FILE);
-const PROJECT_ROOT_DIR = path.resolve(CURRENT_DIR, "../../../../..");
-
-function resolveAutomacaoDir() {
-    const candidates = [
-        process.env.AUTOMACAO_BLING_DIR,
-        path.resolve(PROJECT_ROOT_DIR, "automacao"),
-        path.resolve(process.cwd(), "automacao"),
-        path.resolve(process.cwd(), "../automacao"),
-        path.resolve("automacao"),
-        path.resolve("C:/Users/pedra/automacao-bling"),
-    ].filter(Boolean);
-
-    const withPackageJson = candidates.find((dir) => existsSync(path.join(dir, "package.json")));
-    return withPackageJson || candidates[0];
-}
-
-const AUTOMACAO_DIR = resolveAutomacaoDir();
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 function normalizeOrdemDeServico(value) {
     const numero = String(value || "").trim();
@@ -94,7 +74,8 @@ function getAutomacaoEnv() {
         return cachedAutomacaoEnv;
     }
 
-    const envPath = path.join(AUTOMACAO_DIR, ".env");
+    const automacaoDir = path.resolve(PROJECT_ROOT_DIR, "automacao");
+    const envPath = path.join(automacaoDir, ".env");
     if (!existsSync(envPath)) {
         cachedAutomacaoEnv = {};
         return cachedAutomacaoEnv;
