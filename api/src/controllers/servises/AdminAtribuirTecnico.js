@@ -9,21 +9,22 @@ import dotenv from "dotenv";
 
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const CURRENT_DIR = path.dirname(CURRENT_FILE);
-// AdminAtribuirTecnico.js → servises → controllers → src → api → src → (raiz)
-// Precisa subir 5 níveis para chegar na raiz do projeto
-const PROJECT_ROOT_DIR = path.resolve(CURRENT_DIR, "../../../../../..");
-const AUTOMACAO_FLOWS_DIR = path.resolve(PROJECT_ROOT_DIR, "automacao/src/flows");
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+// Agora automacao está em api/automacao, muito mais simples
+const AUTOMACAO_FLOWS_DIR = path.resolve(CURRENT_DIR, "../../../automacao/src/flows");
 
 let criarOrdemDeServico = null;
 
 async function loadCriarOrdemDeServico() {
     if (!criarOrdemDeServico) {
-        const module = await import(path.resolve(AUTOMACAO_FLOWS_DIR, "criarOrdemServico.js"));
+        const modulePath = path.resolve(AUTOMACAO_FLOWS_DIR, "criarOrdemServico.js");
+        const module = await import(modulePath);
         criarOrdemDeServico = module.default;
     }
     return criarOrdemDeServico;
 }
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 let automationRunnerOverride = null;
 let cachedAutomacaoEnv = null;
@@ -76,7 +77,7 @@ function getAutomacaoEnv() {
         return cachedAutomacaoEnv;
     }
 
-    const automacaoDir = path.resolve(PROJECT_ROOT_DIR, "automacao");
+    const automacaoDir = path.resolve(AUTOMACAO_FLOWS_DIR, "../..");
     const envPath = path.join(automacaoDir, ".env");
     if (!existsSync(envPath)) {
         cachedAutomacaoEnv = {};

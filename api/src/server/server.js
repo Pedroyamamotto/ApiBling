@@ -27,7 +27,7 @@ getDb().then(db => {
             secret: process.env.SESSION_SECRET,
             resave: false,
             saveUninitialized: false,
-            store: MongoStore.create({ cliente: db.client }),
+            store: MongoStore.create({ client: db.client }),
             cookie: { maxAge: 1000 * 60 * 60 * 24 } // 1 dia
         })
     );
@@ -78,7 +78,7 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 // Ping automático para evitar que o Render durma
-const PING_URL = process.env.PING_URL || "https://apisubaulas.onrender.com/api/v1/aulas/MostarAulas";
+const PING_URL = process.env.PING_URL || "https://apibling-z8wn.onrender.com";
 setInterval(() => {
     fetch(PING_URL)
         .then(() => console.log("Ping enviado para manter o Render acordado"))
