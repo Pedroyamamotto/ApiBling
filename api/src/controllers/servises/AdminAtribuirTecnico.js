@@ -6,7 +6,21 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import criarOrdemDeServico from "../../../automacao/src/flows/criarOrdemServico.js";
+
+const CURRENT_FILE = fileURLToPath(import.meta.url);
+const CURRENT_DIR = path.dirname(CURRENT_FILE);
+const PROJECT_ROOT_DIR = path.resolve(CURRENT_DIR, "../../../../..");
+const AUTOMACAO_FLOWS_DIR = path.resolve(PROJECT_ROOT_DIR, "automacao/src/flows");
+
+let criarOrdemDeServico = null;
+
+async function loadCriarOrdemDeServico() {
+    if (!criarOrdemDeServico) {
+        const module = await import(path.resolve(AUTOMACAO_FLOWS_DIR, "criarOrdemServico.js"));
+        criarOrdemDeServico = module.default;
+    }
+    return criarOrdemDeServico;
+}
 
 let automationRunnerOverride = null;
 let cachedAutomacaoEnv = null;
@@ -164,10 +178,11 @@ async function resolveNomeCliente(service, clientesCollection) {
 }
 
 async function runAutomacaoBling({ numeroPedido, tecnico }) {
+    const criarOrdem = await loadCriarOrdemDeServico();
     const logs = [];
     const onLog = (msg) => logs.push(msg);
     
-    const resultado = await criarOrdemDeServico(String(numeroPedido), {
+    const resultado = await criarOrdem(String(numeroPedido), {
         salvar: true,
         headless: IS_PRODUCTION,
         slowMo: IS_PRODUCTION ? 0 : 150,
