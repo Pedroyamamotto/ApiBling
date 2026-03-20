@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
-import { validarVariaveisObrigatorias } from '../config.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { BLING_VENDAS_URL, validarVariaveisObrigatorias } from '../config.js';
 import { executarComRetry } from '../utils/core.js';
 import { salvarErroTela, salvarCamposOS } from '../utils/evidencias.js';
 import { fazerLogin } from '../steps/login.js';
@@ -9,9 +11,69 @@ import {
     salvarOS,
     tratarPopupConfirmacaoOS,
     capturarNumeroOSNaLista,
-    obterTextoPrimeiroDisponivel,
     coletarCamposPreenchidosDaOS,
 } from '../steps/os.js';
+
+function boolFromEnv(valor, padrao) {
+    if (valor === undefined || valor === null || String(valor).trim() === '') {
+        return padrao;
+    }
+
+    const normalizado = String(valor).trim().toLowerCase();
+    return ['1', 'true', 't', 'yes', 'y', 'on'].includes(normalizado);
+}
+
+function parseProxy() {
+    const proxyRaw = String(process.env.BLING_PROXY_URL || '').trim();
+    if (!proxyRaw) {
+        return undefined;
+    }
+
+    try {
+        const parsed = new URL(proxyRaw);
+        const proxy = {
+            server: `${parsed.protocol}//${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}`,
+        };
+
+        if (parsed.username) {
+            proxy.username = decodeURIComponent(parsed.username);
+        }
+
+        if (parsed.password) {
+            proxy.password = decodeURIComponent(parsed.password);
+        }
+
+        return proxy;
+    } catch {
+        return { server: proxyRaw };
+    }
+}
+
+function resolverStorageStatePath() {
+    const valor = String(process.env.BLING_STORAGE_STATE_PATH || '').trim();
+    if (!valor) {
+        return '';
+    }
+
+    return path.isAbsolute(valor)
+        ? valor
+        : path.resolve(process.cwd(), valor);
+}
+
+async function existeArquivo(filePath) {
+    if (!filePath) return false;
+
+    try {
+        await fs.access(filePath);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function estaEmLogin(url) {
+    return /\/login(\?|$|\/)?/i.test(String(url || ''));
+}
 
 async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
     const log = opcoes.onLog || console.log;
@@ -21,10 +83,6 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
         throw new Error('Informe o numero do pedido. Exemplo: node criarOS.js 9713');
     }
 
-    const entrada = String(numeroPedido || '').trim();
-    const matchVendaDaUrl = entrada.match(/#venda\/(\d+)/i);
-    const idVendaDireto = matchVendaDaUrl ? matchVendaDaUrl[1] : (/^\d{9,}$/.test(entrada) ? entrada : '');
-
     try {
         validarVariaveisObrigatorias();
     } catch (e) {
@@ -33,13 +91,33 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
     }
 
     log('[DEBUG] Abrindo login...');
+    const proxy = parseProxy();
+    const storageStatePath = resolverStorageStatePath();
+    const usarHeadless = opcoes.headless ?? boolFromEnv(process.env.BLING_HEADLESS, true);
+
     const browser = await chromium.launch({
-        headless: true,
+        headless: usarHeadless,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
         slowMo: opcoes.slowMo ?? 150,
+        proxy,
     });
-    const context = await browser.newContext();
+
+    const contextOptions = {};
+    if (await existeArquivo(storageStatePath)) {
+        contextOptions.storageState = storageStatePath;
+        log('[DEBUG] Reutilizando sessao salva do Bling.');
+    }
+
+    const context = await browser.newContext(contextOptions);
     let page = await context.newPage();
+
+    if (storageStatePath) {
+        await fs.mkdir(path.dirname(storageStatePath), { recursive: true }).catch(() => null);
+    }
+
+    if (proxy?.server) {
+        log(`[DEBUG] Proxy configurado para automacao (${proxy.server}).`);
+    }
 
     try {
         console.log(`[INFO] Iniciando automacao para pedido ${numeroPedido}...`);
@@ -51,12 +129,27 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
             });
         }
 
-        await executarComRetry(async () => {
-            await fazerLogin(page, {
-                usuario: process.env.BLING_USER,
-                senha: process.env.BLING_PASSWORD,
-            });
-        }, { descricao: 'login no Bling' });
+        let sessaoValida = false;
+        if (await existeArquivo(storageStatePath)) {
+            await page.goto(BLING_VENDAS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => null);
+            sessaoValida = !estaEmLogin(page.url());
+            if (sessaoValida) {
+                log('[DEBUG] Sessao valida reaproveitada (sem novo login).');
+            }
+        }
+
+        if (!sessaoValida) {
+            await executarComRetry(async () => {
+                await fazerLogin(page, {
+                    usuario: process.env.BLING_USER,
+                    senha: process.env.BLING_PASSWORD,
+                });
+            }, { descricao: 'login no Bling' });
+        }
+
+        if (storageStatePath) {
+            await context.storageState({ path: storageStatePath });
+        }
 
         log('[DEBUG] Abrindo página de pedidos...');
         await abrirTelaVendas(page, log);
@@ -158,7 +251,7 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
                     await page.waitForTimeout(1200);
                 }
                 numeroOSLista = await capturarNumeroOSNaLista(page, numeroPedido);
-            } catch (e) {
+            } catch {
                 // Se falhar, abre nova aba para garantir
                 const pageLista = await context.newPage();
                 await pageLista.goto('https://www.bling.com.br/b/ordem.servicos.php#list', { waitUntil: 'domcontentloaded' });
@@ -209,12 +302,12 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
     } finally {
         try {
             if (context && context.close) await context.close();
-        } catch (e) {
+        } catch {
             // Contexto já fechado
         }
         try {
             if (browser && browser.close) await browser.close();
-        } catch (e) {
+        } catch {
             // Browser já fechado
         }
     }

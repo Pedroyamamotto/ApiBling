@@ -88,6 +88,15 @@ function getAutomacaoEnv() {
     return cachedAutomacaoEnv;
 }
 
+function parseBoolean(value, defaultValue = false) {
+    if (value === undefined || value === null || String(value).trim() === '') {
+        return defaultValue;
+    }
+
+    const normalized = String(value).trim().toLowerCase();
+    return ['1', 'true', 't', 'yes', 'y', 'on'].includes(normalized);
+}
+
 async function findTecnicoById(usuariosCollection, tecnicoId) {
     if (!tecnicoId) {
         return null;
@@ -165,6 +174,11 @@ async function runAutomacaoBling({ numeroPedido, tecnico }) {
     const criarOrdem = await loadCriarOrdemDeServico();
     const logs = [];
     const onLog = (msg) => logs.push(msg);
+    const automacaoEnv = getAutomacaoEnv();
+    const debugBrowser = parseBoolean(
+        process.env.BLING_DEBUG_BROWSER ?? automacaoEnv.BLING_DEBUG_BROWSER,
+        false
+    );
     
     // Definir TECNICO no process.env para que a validação da automação encontre
     const tecnicoOriginal = process.env.TECNICO;
@@ -175,7 +189,7 @@ async function runAutomacaoBling({ numeroPedido, tecnico }) {
             salvar: true,
             headless: IS_PRODUCTION,
             slowMo: IS_PRODUCTION ? 0 : 150,
-            debug: !IS_PRODUCTION,
+            debug: debugBrowser,
             onLog,
         });
 
