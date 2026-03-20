@@ -1,7 +1,7 @@
 function parseArgs(argv) {
     const resultado = {
         numeroPedido: '',
-        headless: false,
+        headless: true,
         slowMo: 150,
         debug: false,
         pause: false,
@@ -18,6 +18,11 @@ function parseArgs(argv) {
 
         if (arg === '--headless') {
             resultado.headless = true;
+            continue;
+        }
+
+        if (arg === '--headed') {
+            resultado.headless = false;
             continue;
         }
 
@@ -57,7 +62,7 @@ function parseArgs(argv) {
 }
 
 function mostrarAjudaCriarOS() {
-    console.log('Uso: node criarOS.js <numeroPedido|idVenda|urlVenda> [--headless] [--slow 150] [--debug] [--salvar]');
+    console.log('Uso: node criarOS.js <numeroPedido|idVenda|urlVenda> [--headless|--headed] [--slow 150] [--debug] [--salvar]');
     console.log('Exemplos:');
     console.log('  node criarOS.js 9713 --salvar');
     console.log('  node criarOS.js 25328056737 --salvar');

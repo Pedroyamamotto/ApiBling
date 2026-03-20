@@ -5,7 +5,13 @@ const { preencherTecnicoDaOS, salvarOS, tratarPopupConfirmacaoOS } = require('..
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
 
 async function criarOS(numeroPedido) {
-    const browser = await chromium.launch({ headless: false, slowMo: 150 });
+    const semDisplayNoLinux = process.platform === 'linux' && !process.env.DISPLAY;
+    const headless = semDisplayNoLinux ? true : false;
+    if (semDisplayNoLinux) {
+        console.warn('[WARN] DISPLAY ausente no Linux; forçando headless=true para evitar erro de X server.');
+    }
+
+    const browser = await chromium.launch({ headless, slowMo: 150 });
     const context = await browser.newContext();
     const page = await context.newPage();
     try {

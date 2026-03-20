@@ -115,7 +115,13 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
     log('[DEBUG] Abrindo login...');
     const proxy = parseProxy();
     const storageStatePath = resolverStorageStatePath();
-    const usarHeadless = opcoes.headless ?? boolFromEnv(process.env.BLING_HEADLESS, true);
+    let usarHeadless = opcoes.headless ?? boolFromEnv(process.env.BLING_HEADLESS, true);
+    const semDisplayNoLinux = process.platform === 'linux' && !process.env.DISPLAY;
+
+    if (!usarHeadless && semDisplayNoLinux) {
+        usarHeadless = true;
+        console.warn('[WARN] DISPLAY ausente no Linux; forçando headless=true para evitar erro de X server.');
+    }
 
     const browser = await chromium.launch({
         headless: usarHeadless,
