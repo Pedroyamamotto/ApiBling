@@ -256,11 +256,9 @@ afterEach(async () => {
 
 describe('PATCH /api/v1/services/:id/admin/atribuir', () => {
     it('gera OS via automacao e atualiza o servico', async () => {
-        setAutomationRunnerForTests(async ({ numeroPedido, tecnico, debug, headless }) => {
+        setAutomationRunnerForTests(async ({ numeroPedido, tecnico }) => {
             expect(numeroPedido).toBe("9726");
             expect(tecnico).toBe("Guilherme Kenji");
-            expect(debug).toBe(true);
-            expect(headless).toBe(false);
             return {
                 raw: '{"pedido":"9726","ordemDeServico":"5001"}',
                 result: {

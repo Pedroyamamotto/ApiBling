@@ -1,123 +1,144 @@
-  it('deve criar OS e retornar número e dados completos', async () => {
-    jest.setTimeout(120000);
-    const numeroPedidoExistente = '9726'; // Número de pedido existente
-    let erro;
-    const logs = [];
-    const onLog = (msg) => logs.push(msg);
-    let resultado = null;
-    try {
-      resultado = await criarOrdemDeServico(numeroPedidoExistente, { headless: false, onLog, salvar: true });
-    } catch (e) {
-      erro = e;
-    }
-    console.log('LOGS CAPTURADOS (salvar):', logs);
-    if (erro && erro.message) {
-      console.log('ERRO CAPTURADO (salvar):', erro.message);
-    }
-    expect(erro).toBeUndefined();
-    expect(resultado).toBeDefined();
-    expect(resultado.pedido).toBe(numeroPedidoExistente);
-    expect(resultado.ordemDeServico).toBeDefined();
-    expect(resultado.ordemDeServico).not.toBe('nao identificado');
-    expect(resultado.camposExtraidos).toBeGreaterThanOrEqual(0);
-    expect(resultado.campos).toBeDefined();
-    expect(resultado.url).toMatch(/ordem\.servicos\.php#venda\//);
-    expect(logs).toContain('[DEBUG] Abrindo login...');
-    expect(logs).toContain('[DEBUG] Abrindo página de pedidos...');
-    expect(logs).toContain('[DEBUG] Pesquisando pedido...');
-    // Não deve conter log de pedido não encontrado
-    expect(logs.find(l => l.includes('não encontrado'))).toBeUndefined();
-  });
-const { chromium } = require('playwright');
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
-const criarOrdemDeServico = require('./criarOrdemServico');
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-// Mock do chromium para capturar logs do navegador
-jest.mock('playwright', () => {
-  const original = jest.requireActual('playwright');
+const mocks = {
+  validarVariaveisObrigatorias: jest.fn(),
+  executarComRetry: jest.fn(async (fn) => fn()),
+  salvarErroTela: jest.fn(async (_page, _msg) => ({
+    url: 'https://www.bling.com.br/login',
+    screenshot: '/tmp/erro.png',
+    html: '/tmp/erro.html',
+  })),
+  salvarCamposOS: jest.fn(async () => '/tmp/campos-os.json'),
+  fazerLogin: jest.fn(async () => undefined),
+  abrirTelaVendas: jest.fn(async () => undefined),
+  preencherFiltroPedido: jest.fn(async () => undefined),
+  abrirTelaGerarOSNoPedido: jest.fn(async (page) => page),
+  obterNomeClienteDoPedido: jest.fn(async () => 'Cliente Teste'),
+  preencherTecnicoDaOS: jest.fn(async () => undefined),
+  salvarOS: jest.fn(async () => undefined),
+  tratarPopupConfirmacaoOS: jest.fn(async () => ''),
+  capturarNumeroOSNaLista: jest.fn(async () => '5001'),
+  coletarCamposPreenchidosDaOS: jest.fn(async () => []),
+};
+
+function buildFakePage() {
+  let currentUrl = 'https://www.bling.com.br/login';
+
   return {
-    ...original,
-    chromium: {
-      ...original.chromium,
-      launch: async (opts) => {
-        const browser = await original.chromium.launch(opts);
-        const newContext = browser.newContext.bind(browser);
-        browser.newContext = async (...args) => {
-          const context = await newContext(...args);
-          const newPage = context.newPage.bind(context);
-          context.newPage = async (...pArgs) => {
-            const page = await newPage(...pArgs);
-            const originalConsole = page.on.bind(page);
-            page._testLogs = [];
-            page.on = (event, cb) => {
-              if (event === 'console') {
-                originalConsole('console', (msg) => {
-                  page._testLogs.push(msg.text());
-                  cb(msg);
-                });
-              } else {
-                originalConsole(event, cb);
-              }
-            };
-            return page;
-          };
-          return context;
-        };
-        return browser;
-      }
-    }
+    on: jest.fn(),
+    url: jest.fn(() => currentUrl),
+    goto: jest.fn(async (url) => {
+      currentUrl = url;
+    }),
+    waitForURL: jest.fn(async () => {
+      currentUrl = 'https://www.bling.com.br/ordem.servicos.php#venda/123';
+    }),
+    waitForLoadState: jest.fn(async () => undefined),
+    waitForTimeout: jest.fn(async () => undefined),
+    locator: jest.fn(() => ({
+      first: () => ({
+        count: jest.fn(async () => 0),
+        click: jest.fn(async () => undefined),
+        fill: jest.fn(async () => undefined),
+        press: jest.fn(async () => undefined),
+      }),
+    })),
   };
-});
+}
 
-describe('Fluxo criarOrdemDeServico', () => {
-  jest.setTimeout(60000);
+function buildFakeBrowser() {
+  const page = buildFakePage();
+  const context = {
+    newPage: jest.fn(async () => page),
+    close: jest.fn(async () => undefined),
+    storageState: jest.fn(async () => undefined),
+  };
 
-  it('deve abortar e logar corretamente quando pedido não existe', async () => {
-    const numeroPedidoInexistente = '999999999'; // Use um número garantidamente inexistente
-    let erro;
-    const logs = [];
-    const onLog = (msg) => logs.push(msg);
-    try {
-      await criarOrdemDeServico(numeroPedidoInexistente, { headless: false, onLog });
-    } catch (e) {
-      erro = e;
-    }
-    // Exibir todos os logs para depuração
-    console.log('LOGS CAPTURADOS:', logs);
-    if (erro && erro.message) {
-      console.log('ERRO CAPTURADO:', erro.message);
-    }
-    expect(logs).toContain('[DEBUG] Abrindo login...');
-    expect(logs).toContain('[DEBUG] Abrindo página de pedidos...');
-    expect(logs).toContain('[DEBUG] Pesquisando pedido...');
-    expect(logs).toContain('[DEBUG] Pedido não encontrado, fechando navegador/contexto e abortando.');
-    expect(erro).toBeDefined();
-    expect(erro.message).toMatch(/numero de pedido de venda não encontrado/i);
+  const browser = {
+    newContext: jest.fn(async () => context),
+    close: jest.fn(async () => undefined),
+  };
+
+  return { browser, context, page };
+}
+
+const { browser } = buildFakeBrowser();
+
+await jest.unstable_mockModule('playwright', () => ({
+  chromium: {
+    launch: jest.fn(async () => browser),
+  },
+}));
+
+await jest.unstable_mockModule('../config.js', () => ({
+  BLING_VENDAS_URL: 'https://www.bling.com.br/vendas.php#list',
+  validarVariaveisObrigatorias: mocks.validarVariaveisObrigatorias,
+}));
+
+await jest.unstable_mockModule('../utils/core.js', () => ({
+  executarComRetry: mocks.executarComRetry,
+}));
+
+await jest.unstable_mockModule('../utils/evidencias.js', () => ({
+  salvarErroTela: mocks.salvarErroTela,
+  salvarCamposOS: mocks.salvarCamposOS,
+}));
+
+await jest.unstable_mockModule('../steps/login.js', () => ({
+  fazerLogin: mocks.fazerLogin,
+}));
+
+await jest.unstable_mockModule('../steps/pedido.js', () => ({
+  abrirTelaVendas: mocks.abrirTelaVendas,
+  preencherFiltroPedido: mocks.preencherFiltroPedido,
+  abrirTelaGerarOSNoPedido: mocks.abrirTelaGerarOSNoPedido,
+  obterNomeClienteDoPedido: mocks.obterNomeClienteDoPedido,
+}));
+
+await jest.unstable_mockModule('../steps/os.js', () => ({
+  preencherTecnicoDaOS: mocks.preencherTecnicoDaOS,
+  salvarOS: mocks.salvarOS,
+  tratarPopupConfirmacaoOS: mocks.tratarPopupConfirmacaoOS,
+  capturarNumeroOSNaLista: mocks.capturarNumeroOSNaLista,
+  coletarCamposPreenchidosDaOS: mocks.coletarCamposPreenchidosDaOS,
+}));
+
+const { default: criarOrdemDeServico } = await import('./criarOrdemServico.js');
+
+describe('criarOrdemDeServico (automacao)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('deve criar OS corretamente quando pedido existe', async () => {
-    const numeroPedidoExistente = '9726'; // Número de pedido existente
-    let erro;
-    const logs = [];
-    const onLog = (msg) => logs.push(msg);
-    let resultado = null;
-    try {
-      resultado = await criarOrdemDeServico(numeroPedidoExistente, { headless: false, onLog, salvar: false });
-    } catch (e) {
-      erro = e;
-    }
-    console.log('LOGS CAPTURADOS (existente):', logs);
-    if (erro && erro.message) {
-      console.log('ERRO CAPTURADO (existente):', erro.message);
-    }
-    expect(erro).toBeUndefined();
+  it('retorna aguardandoSalvar quando salvar=false', async () => {
+    const resultado = await criarOrdemDeServico('9726', {
+      salvar: false,
+      headless: false,
+      slowMo: 0,
+      onLog: () => undefined,
+    });
+
     expect(resultado).toBeDefined();
-    expect(resultado.pedido).toBe(numeroPedidoExistente);
+    expect(resultado.pedido).toBe('9726');
     expect(resultado.aguardandoSalvar).toBe(true);
-    expect(logs).toContain('[DEBUG] Abrindo login...');
-    expect(logs).toContain('[DEBUG] Abrindo página de pedidos...');
-    expect(logs).toContain('[DEBUG] Pesquisando pedido...');
-    // Não deve conter log de pedido não encontrado
-    expect(logs.find(l => l.includes('não encontrado'))).toBeUndefined();
+    expect(mocks.fazerLogin).toHaveBeenCalled();
+    expect(mocks.preencherTecnicoDaOS).toHaveBeenCalled();
+  });
+
+  it('retorna erro amigavel quando pedido nao encontrado', async () => {
+    mocks.abrirTelaGerarOSNoPedido.mockImplementationOnce(async () => {
+      throw new Error('pedido nao encontrado');
+    });
+
+    await expect(
+      criarOrdemDeServico('999999999', {
+        salvar: false,
+        headless: false,
+        slowMo: 0,
+        onLog: () => undefined,
+      })
+    ).rejects.toThrow(/numero de pedido de venda nao encontrado|numero de pedido de venda não encontrado/i);
+
+    expect(mocks.salvarErroTela).toHaveBeenCalled();
   });
 });

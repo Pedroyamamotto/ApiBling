@@ -40,6 +40,28 @@ const schema = yup.object().shape({
     observacoes: yup.string(),
 });
 
+function logStructured(level, event, data = {}) {
+    const payload = {
+        ts: new Date().toISOString(),
+        level,
+        event,
+        ...data,
+    };
+
+    const line = JSON.stringify(payload);
+    if (level === "error") {
+        console.error(line);
+        return;
+    }
+
+    if (level === "warn") {
+        console.warn(line);
+        return;
+    }
+
+    console.log(line);
+}
+
 function normalizeOrdemDeServico(value) {
     const numero = String(value || "").trim();
     if (!/^\d+$/.test(numero)) {
@@ -122,54 +144,6 @@ async function findTecnicoById(usuariosCollection, tecnicoId) {
     return null;
 }
 
-async function findClienteById(clientesCollection, clienteId) {
-    if (!clienteId) {
-        return null;
-    }
-
-    const normalizedId = String(clienteId).trim();
-    const filters = [{ _id: normalizedId }];
-
-    if (ObjectId.isValid(normalizedId)) {
-        filters.unshift({ _id: new ObjectId(normalizedId) });
-    }
-
-    for (const filter of filters) {
-        const cliente = await clientesCollection.findOne(filter, {
-            projection: { _id: 1, nome: 1, cliente: 1, telefone: 1, celular: 1 },
-        });
-
-        if (cliente) {
-            return cliente;
-        }
-    }
-
-    return null;
-}
-
-async function resolveNomeCliente(service, clientesCollection) {
-    const candidatosNoServico = [
-        service?.nome_cliente,
-        service?.cliente_nome,
-        service?.cliente,
-        service?.nomeCliente,
-    ]
-        .map((value) => String(value || "").trim())
-        .filter(Boolean);
-
-    if (candidatosNoServico.length > 0) {
-        return candidatosNoServico[0];
-    }
-
-    if (!service?.cliente_id) {
-        return null;
-    }
-
-    const cliente = await findClienteById(clientesCollection, service.cliente_id);
-    const nomeCliente = String(cliente?.nome || cliente?.cliente || "").trim();
-    return nomeCliente || null;
-}
-
 async function runAutomacaoBling({ numeroPedido, tecnico }) {
     const criarOrdem = await loadCriarOrdemDeServico();
     const logs = [];
@@ -231,6 +205,11 @@ export const adminAtribuirTecnico = async (req, res) => {
 
     const { tecnico_id, tecnico: tecnicoNomeInformado, data_agendada, hora_agendada, observacoes } = req.body;
 
+    logStructured("info", "admin_atribuir_tecnico_started", {
+        serviceId: id,
+        tecnicoId: tecnico_id,
+    });
+
     try {
         const db = await getDb();
         const servicosCollection = db.collection("servicos");
@@ -279,6 +258,13 @@ export const adminAtribuirTecnico = async (req, res) => {
                 tecnico: tecnicoNome,
             });
         } catch (primaryError) {
+            logStructured("warn", "automacao_bling_primary_failure", {
+                serviceId: id,
+                numeroPedido: String(numeroPedido),
+                tecnico: tecnicoNome,
+                error: primaryError?.message || "erro desconhecido",
+            });
+
             const msg = String(primaryError?.message || "").toLowerCase();
             const shouldRetryWithPedidoId =
                 service.pedido_id &&
@@ -297,6 +283,12 @@ export const adminAtribuirTecnico = async (req, res) => {
             if (!shouldRetryWithPedidoId) {
                 throw primaryError;
             }
+
+            logStructured("info", "automacao_bling_retry_with_pedido_id", {
+                serviceId: id,
+                numeroPedidoOriginal: String(numeroPedido),
+                pedidoIdUtilizado: String(service.pedido_id),
+            });
 
             execResult = await runner({
                 numeroPedido: String(service.pedido_id),
@@ -326,6 +318,12 @@ export const adminAtribuirTecnico = async (req, res) => {
         const updatedService = await servicosCollection.findOne({ _id: new ObjectId(id) });
 
         console.log(chalk.blue(`Sistema 💻 : Técnico ${tecnico_id} atribuído e OS gerada para serviço ${id} 📋`));
+        logStructured("info", "admin_atribuir_tecnico_success", {
+            serviceId: id,
+            numeroPedido: String(numeroPedido),
+            tecnico: tecnicoNome,
+            ordemDeServico,
+        });
 
         return res.status(200).json({
             success: true,
@@ -336,6 +334,11 @@ export const adminAtribuirTecnico = async (req, res) => {
         });
     } catch (error) {
         console.error("Erro ao atribuir técnico:", error);
+        logStructured("error", "admin_atribuir_tecnico_failed", {
+            serviceId: id,
+            error: error?.message || "erro interno",
+            stack: error?.stack || null,
+        });
         return res.status(500).json({ message: "Erro interno no servidor" });
     }
 };

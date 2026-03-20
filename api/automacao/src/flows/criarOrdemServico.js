@@ -71,6 +71,28 @@ async function existeArquivo(filePath) {
     }
 }
 
+function logStructured(event, data = {}, level = 'info') {
+    const payload = {
+        ts: new Date().toISOString(),
+        level,
+        event,
+        ...data,
+    };
+
+    const line = JSON.stringify(payload);
+    if (level === 'error') {
+        console.error(line);
+        return;
+    }
+
+    if (level === 'warn') {
+        console.warn(line);
+        return;
+    }
+
+    console.log(line);
+}
+
 function estaEmLogin(url) {
     return /\/login(\?|$|\/)?/i.test(String(url || ''));
 }
@@ -121,6 +143,13 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
 
     try {
         console.log(`[INFO] Iniciando automacao para pedido ${numeroPedido}...`);
+        logStructured('automacao_criar_os_started', {
+            pedido: String(numeroPedido),
+            headless: !!usarHeadless,
+            possuiProxy: !!proxy?.server,
+            usaStorageState: !!storageStatePath,
+        });
+
         if (opcoes.debug) {
             page.on('console', (msg) => console.log(`[BROWSER:${msg.type()}] ${msg.text()}`));
             page.on('requestfailed', (req) => {
@@ -135,6 +164,9 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
             sessaoValida = !estaEmLogin(page.url());
             if (sessaoValida) {
                 log('[DEBUG] Sessao valida reaproveitada (sem novo login).');
+                logStructured('automacao_criar_os_session_reused', {
+                    pedido: String(numeroPedido),
+                });
             }
         }
 
@@ -149,6 +181,10 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
 
         if (storageStatePath) {
             await context.storageState({ path: storageStatePath });
+            logStructured('automacao_criar_os_state_saved', {
+                pedido: String(numeroPedido),
+                storageStatePath,
+            });
         }
 
         log('[DEBUG] Abrindo página de pedidos...');
@@ -227,6 +263,12 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
             };
 
             console.log('[INFO] Ordem de servico criada com sucesso (via popup).', resultadoRapido);
+            logStructured('automacao_criar_os_success', {
+                pedido: String(numeroPedido),
+                ordemDeServico: numeroOSPopup,
+                via: 'popup',
+                url: page.url(),
+            });
             return resultadoRapido;
         }
 
@@ -293,9 +335,22 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
         };
 
         console.log('[INFO] Ordem de servico criada com sucesso.', resultado);
+        logStructured('automacao_criar_os_success', {
+            pedido: String(numeroPedido),
+            ordemDeServico,
+            via: 'lista',
+            url: page.url(),
+        });
         return resultado;
     } catch (erro) {
         const dadosErro = await salvarErroTela(page, erro.message);
+        logStructured('automacao_criar_os_failed', {
+            pedido: String(numeroPedido),
+            error: erro?.message || 'erro desconhecido',
+            url: dadosErro.url,
+            screenshot: dadosErro.screenshot,
+            html: dadosErro.html,
+        }, 'error');
         throw new Error(
             `${erro.message}\nURL: ${dadosErro.url}\nScreenshot: ${dadosErro.screenshot}\nHTML: ${dadosErro.html}`
         );
