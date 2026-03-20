@@ -1,11 +1,17 @@
-
-require('dotenv').config();
-const { chromium } = require('playwright');
-const { fazerLogin } = require('../steps/login');
-const { abrirTelaVendas, preencherFiltroPedido, obterNomeClienteDoPedido, fecharInterferenciasDaTela } = require('../steps/pedido');
+import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+import { fazerLogin } from '../steps/login.js';
+import { abrirTelaVendas, preencherFiltroPedido } from '../steps/pedido.js';
+import { getHeadlessMode, getChromiumArgs } from '../utils/browser.js';
 
 async function buscarOS(numeroPedido, { headless = false, debug = false } = {}) {
-    const browser = await chromium.launch({ headless, slowMo: 0 });
+    const browser = await chromium.launch({
+        headless: getHeadlessMode({ headless, defaultHeadless: true }),
+        slowMo: 0,
+        args: getChromiumArgs(),
+    });
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
@@ -41,7 +47,9 @@ async function buscarOS(numeroPedido, { headless = false, debug = false } = {}) 
     }
 }
 
-if (require.main === module) {
+const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+
+if (isMain) {
     const numeroPedido = process.argv[2];
     if (!numeroPedido) {
         console.error('Informe o número do pedido. Exemplo: node buscarOS.js 9726');

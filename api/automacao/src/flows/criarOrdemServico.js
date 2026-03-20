@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { BLING_VENDAS_URL, validarVariaveisObrigatorias } from '../config.js';
 import { executarComRetry } from '../utils/core.js';
+import { getHeadlessMode, getChromiumArgs } from '../utils/browser.js';
 import { salvarErroTela, salvarCamposOS } from '../utils/evidencias.js';
 import { fazerLogin } from '../steps/login.js';
 import { abrirTelaVendas, preencherFiltroPedido, abrirTelaGerarOSNoPedido, obterNomeClienteDoPedido } from '../steps/pedido.js';
@@ -115,17 +116,12 @@ async function criarOrdemDeServico(numeroPedido, opcoes = {}) {
     log('[DEBUG] Abrindo login...');
     const proxy = parseProxy();
     const storageStatePath = resolverStorageStatePath();
-    let usarHeadless = opcoes.headless ?? boolFromEnv(process.env.BLING_HEADLESS, true);
-    const semDisplayNoLinux = process.platform === 'linux' && !process.env.DISPLAY;
-
-    if (!usarHeadless && semDisplayNoLinux) {
-        usarHeadless = true;
-        console.warn('[WARN] DISPLAY ausente no Linux; forçando headless=true para evitar erro de X server.');
-    }
+    const preferenciaHeadless = opcoes.headless ?? boolFromEnv(process.env.BLING_HEADLESS, true);
+    const usarHeadless = getHeadlessMode({ headless: preferenciaHeadless, defaultHeadless: true });
 
     const browser = await chromium.launch({
         headless: usarHeadless,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: getChromiumArgs(),
         slowMo: opcoes.slowMo ?? 150,
         proxy,
     });

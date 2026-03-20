@@ -1,17 +1,20 @@
-const { chromium } = require('playwright');
-const { fazerLogin } = require('../steps/login');
-const { abrirTelaVendas, preencherFiltroPedido, abrirTelaGerarOSNoPedido } = require('../steps/pedido');
-const { preencherTecnicoDaOS, salvarOS, tratarPopupConfirmacaoOS } = require('../steps/os');
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
+import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+import { fazerLogin } from '../steps/login.js';
+import { abrirTelaVendas, preencherFiltroPedido, abrirTelaGerarOSNoPedido } from '../steps/pedido.js';
+import { preencherTecnicoDaOS, salvarOS, tratarPopupConfirmacaoOS } from '../steps/os.js';
+import { getHeadlessMode, getChromiumArgs } from '../utils/browser.js';
 
 async function criarOS(numeroPedido) {
-    const semDisplayNoLinux = process.platform === 'linux' && !process.env.DISPLAY;
-    const headless = semDisplayNoLinux ? true : false;
-    if (semDisplayNoLinux) {
-        console.warn('[WARN] DISPLAY ausente no Linux; forçando headless=true para evitar erro de X server.');
-    }
+    const headless = getHeadlessMode({ defaultHeadless: true });
 
-    const browser = await chromium.launch({ headless, slowMo: 150 });
+    const browser = await chromium.launch({
+        headless,
+        slowMo: 150,
+        args: getChromiumArgs(),
+    });
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
@@ -37,7 +40,9 @@ async function criarOS(numeroPedido) {
     }
 }
 
-if (require.main === module) {
+const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+
+if (isMain) {
     const numeroPedido = process.argv[2];
     if (!numeroPedido) {
         console.error('Informe o número do pedido. Exemplo: node criarOS.js 9726');

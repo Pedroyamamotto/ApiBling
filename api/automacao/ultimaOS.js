@@ -1,8 +1,10 @@
-require('dotenv').config();
-
-const { chromium } = require('playwright');
-const { fazerLogin } = require('./src/steps/login');
-const { abrirTelaVendas, preencherFiltroPedido, fecharInterferenciasDaTela } = require('./src/steps/pedido');
+import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+import { fazerLogin } from './src/steps/login.js';
+import { abrirTelaVendas, preencherFiltroPedido, fecharInterferenciasDaTela } from './src/steps/pedido.js';
+import { getHeadlessMode, getChromiumArgs } from './src/utils/browser.js';
 
 function parseArgs(argv) {
     const result = {
@@ -34,7 +36,11 @@ function parseArgs(argv) {
 }
 
 async function capturarViaLista(numeroPedido, { headless, debug }) {
-    const browser = await chromium.launch({ headless, slowMo: 0 });
+    const browser = await chromium.launch({
+        headless: getHeadlessMode({ headless, defaultHeadless: true }),
+        slowMo: 0,
+        args: getChromiumArgs(),
+    });
     const context = await browser.newContext();
     const page = await context.newPage();
 
@@ -168,7 +174,11 @@ async function main() {
 
 }
 
-main().catch((err) => {
-    console.error('[ERRO] Falha ao capturar numero da OS:', err.message);
-    process.exitCode = 1;
-});
+const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+
+if (isMain) {
+    main().catch((err) => {
+        console.error('[ERRO] Falha ao capturar numero da OS:', err.message);
+        process.exitCode = 1;
+    });
+}

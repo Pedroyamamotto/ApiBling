@@ -1,11 +1,17 @@
-require('dotenv').config();
-const { chromium } = require('playwright');
+import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+import { getHeadlessMode, getChromiumArgs } from './src/utils/browser.js';
 
 async function buscarOS({ numeroPedido, nomeCliente, headless = false, debug = false }) {
     if (!numeroPedido) throw new Error('Informe o número do pedido.');
     if (!nomeCliente) throw new Error('Informe o nome do cliente.');
 
-    const browser = await chromium.launch({ headless });
+    const browser = await chromium.launch({
+        headless: getHeadlessMode({ headless, defaultHeadless: true }),
+        args: getChromiumArgs(),
+    });
     const context = await browser.newContext();
     const page = await context.newPage();
     let resultado = { pedido: numeroPedido, cliente: nomeCliente, contato: null, numeroOS: null };
@@ -63,7 +69,9 @@ async function buscarOS({ numeroPedido, nomeCliente, headless = false, debug = f
     }
 }
 
-if (require.main === module) {
+const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+
+if (isMain) {
     const numeroPedido = process.argv[2];
     const nomeCliente = process.argv[3];
     if (!numeroPedido || !nomeCliente) {
