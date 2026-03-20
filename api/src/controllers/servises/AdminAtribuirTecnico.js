@@ -2,32 +2,6 @@ import yup from "yup";
 import chalk from "chalk";
 import { getDb } from "../../db.js";
 import { ObjectId } from "mongodb";
-import { existsSync, readFileSync } from "node:fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import dotenv from "dotenv";
-
-const CURRENT_FILE = fileURLToPath(import.meta.url);
-const CURRENT_DIR = path.dirname(CURRENT_FILE);
-
-// Agora automacao está em api/automacao, muito mais simples
-const AUTOMACAO_FLOWS_DIR = path.resolve(CURRENT_DIR, "../../../automacao/src/flows");
-
-let criarOrdemDeServico = null;
-
-async function loadCriarOrdemDeServico() {
-    if (!criarOrdemDeServico) {
-        const modulePath = path.resolve(AUTOMACAO_FLOWS_DIR, "criarOrdemServico.js");
-        const module = await import(modulePath);
-        criarOrdemDeServico = module.default;
-    }
-    return criarOrdemDeServico;
-}
-
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-
-let automationRunnerOverride = null;
-let cachedAutomacaoEnv = null;
 
 const schema = yup.object().shape({
     tecnico_id: yup.mixed().required("tecnico_id é obrigatório"),
@@ -62,20 +36,6 @@ function logStructured(level, event, data = {}) {
     console.log(line);
 }
 
-function normalizeOrdemDeServico(value) {
-    const numero = String(value || "").trim();
-    if (!/^\d+$/.test(numero)) {
-        return null;
-    }
-
-    // OS no Bling costuma ter poucos digitos; evita gravar id de venda/pedido por engano.
-    if (numero.length < 3 || numero.length > 6) {
-        return null;
-    }
-
-    return numero;
-}
-
 function serializeService(service, fallbackId = null) {
     if (!service) {
         return null;
@@ -92,31 +52,6 @@ function serializeService(service, fallbackId = null) {
         id: resolvedId,
         ...rest,
     };
-}
-
-function getAutomacaoEnv() {
-    if (cachedAutomacaoEnv) {
-        return cachedAutomacaoEnv;
-    }
-
-    const automacaoDir = path.resolve(AUTOMACAO_FLOWS_DIR, "../..");
-    const envPath = path.join(automacaoDir, ".env");
-    if (!existsSync(envPath)) {
-        cachedAutomacaoEnv = {};
-        return cachedAutomacaoEnv;
-    }
-
-    cachedAutomacaoEnv = dotenv.parse(readFileSync(envPath));
-    return cachedAutomacaoEnv;
-}
-
-function parseBoolean(value, defaultValue = false) {
-    if (value === undefined || value === null || String(value).trim() === '') {
-        return defaultValue;
-    }
-
-    const normalized = String(value).trim().toLowerCase();
-    return ['1', 'true', 't', 'yes', 'y', 'on'].includes(normalized);
 }
 
 async function findTecnicoById(usuariosCollection, tecnicoId) {
@@ -144,50 +79,13 @@ async function findTecnicoById(usuariosCollection, tecnicoId) {
     return null;
 }
 
-async function runAutomacaoBling({ numeroPedido, tecnico }) {
-    const criarOrdem = await loadCriarOrdemDeServico();
-    const logs = [];
-    const onLog = (msg) => logs.push(msg);
-    const automacaoEnv = getAutomacaoEnv();
-    const debugBrowser = parseBoolean(
-        process.env.BLING_DEBUG_BROWSER ?? automacaoEnv.BLING_DEBUG_BROWSER,
-        false
-    );
-    
-    // Definir TECNICO no process.env para que a validação da automação encontre
-    const tecnicoOriginal = process.env.TECNICO;
-    process.env.TECNICO = tecnico;
-    
-    try {
-        const resultado = await criarOrdem(String(numeroPedido), {
-            salvar: true,
-            headless: IS_PRODUCTION,
-            slowMo: IS_PRODUCTION ? 0 : 150,
-            debug: debugBrowser,
-            onLog,
-        });
-
-        return {
-            raw: JSON.stringify(resultado),
-            result: resultado,
-            logs,
-        };
-    } finally {
-        // Restaurar valor original
-        if (tecnicoOriginal === undefined) {
-            delete process.env.TECNICO;
-        } else {
-            process.env.TECNICO = tecnicoOriginal;
-        }
-    }
-}
-
 export function setAutomationRunnerForTests(runner) {
-    automationRunnerOverride = runner;
+    // Mantido apenas para compatibilidade com testes legados.
+    return runner;
 }
 
 export function resetAutomationRunnerForTests() {
-    automationRunnerOverride = null;
+    // Mantido apenas para compatibilidade com testes legados.
 }
 
 export const adminAtribuirTecnico = async (req, res) => {
@@ -243,72 +141,12 @@ export const adminAtribuirTecnico = async (req, res) => {
             updateData.observacoes = observacoes;
         }
 
-        // Executa automacao-bling com o numero do pedido do serviço
         const numeroPedido = service.numero_pedido;
-        if (!numeroPedido) {
-            return res.status(400).json({ message: "numero_pedido ausente no servico" });
-        }
-
-        const runner = automationRunnerOverride || runAutomacaoBling;
-        let execResult;
-
-        try {
-            execResult = await runner({
-                numeroPedido,
-                tecnico: tecnicoNome,
-            });
-        } catch (primaryError) {
-            logStructured("warn", "automacao_bling_primary_failure", {
-                serviceId: id,
-                numeroPedido: String(numeroPedido),
-                tecnico: tecnicoNome,
-                error: primaryError?.message || "erro desconhecido",
-            });
-
-            const msg = String(primaryError?.message || "").toLowerCase();
-            const shouldRetryWithPedidoId =
-                service.pedido_id &&
-                String(service.pedido_id) !== String(numeroPedido) &&
-                /nao encontrado|nenhum resultado/i.test(msg);
-
-            // Se erro for de pedido não encontrado, retorna erro amigável
-            if (/nenhum resultado encontrado|pedido de venda não encontrado|pedido não encontrado|pedido inexistente|pedido não existe|pedido não foi encontrado|pedido não está disponível|pedido não está na lista|pedido não localizado|pedido não existe no sistema|pedido não existe no bling|pedido não existe/i.test(msg)) {
-                return res.status(404).json({
-                    success: false,
-                    message: "numero de pedido de venda não encontrado",
-                    detalhe: msg,
-                });
-            }
-
-            if (!shouldRetryWithPedidoId) {
-                throw primaryError;
-            }
-
-            logStructured("info", "automacao_bling_retry_with_pedido_id", {
-                serviceId: id,
-                numeroPedidoOriginal: String(numeroPedido),
-                pedidoIdUtilizado: String(service.pedido_id),
-            });
-
-            execResult = await runner({
-                numeroPedido: String(service.pedido_id),
-                tecnico: tecnicoNome,
-            });
-
-            execResult.result = {
-                ...execResult.result,
-                fallbackNumeroPedido: String(numeroPedido),
-                pedido_id_utilizado: String(service.pedido_id),
-            };
-        }
-
-        let ordemDeServico = normalizeOrdemDeServico(
-            execResult.result?.ordemDeServico || execResult.result?.numeroOS
-        );
-
-        if (ordemDeServico) {
-            updateData.ordem_de_servico = ordemDeServico;
-        }
+        logStructured("info", "automacao_bling_disabled", {
+            serviceId: id,
+            numeroPedido: String(numeroPedido || ""),
+            tecnico: tecnicoNome,
+        });
 
         await servicosCollection.updateOne(
             { _id: new ObjectId(id) },
@@ -317,20 +155,23 @@ export const adminAtribuirTecnico = async (req, res) => {
 
         const updatedService = await servicosCollection.findOne({ _id: new ObjectId(id) });
 
-        console.log(chalk.blue(`Sistema 💻 : Técnico ${tecnico_id} atribuído e OS gerada para serviço ${id} 📋`));
+        console.log(chalk.blue(`Sistema 💻 : Técnico ${tecnico_id} atribuído para serviço ${id} 📋`));
         logStructured("info", "admin_atribuir_tecnico_success", {
             serviceId: id,
             numeroPedido: String(numeroPedido),
             tecnico: tecnicoNome,
-            ordemDeServico,
+            automacaoDesativada: true,
         });
 
         return res.status(200).json({
             success: true,
-            message: "Técnico atribuído e OS criada com sucesso!",
+            message: "Técnico atribuído com sucesso! (automação desativada)",
             service: serializeService(updatedService, id),
             tecnico_utilizado: tecnicoNome,
-            automacao: execResult?.result,
+            automacao: {
+                desativada: true,
+                motivo: "Automação do Bling desativada nesta rota.",
+            },
         });
     } catch (error) {
         console.error("Erro ao atribuir técnico:", error);
