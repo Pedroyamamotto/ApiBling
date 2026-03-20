@@ -28,6 +28,7 @@ build/
 # Arquivos do sistema operacional
 .DS_Store
 Thumbs.db
+bling.json
 
 # Arquivos de teste
 coverage/

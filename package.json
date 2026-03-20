@@ -10,7 +10,10 @@
     "start": "node api/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:integration": "RUN_INTEGRATION_TESTS=true node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "os:cli": "node api/automacao/src/cli.js",
+    "os:help": "node api/automacao/criarOS.js --help",
+    "os:run": "node api/automacao/criarOS.js"
   },
   "keywords": [],
   "author": "",

@@ -1,9 +1,12 @@
-require('dotenv').config();
+import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseArgs, mostrarAjudaCriarOS } from './src/cli.js';
+import criarOrdemDeServico from './src/flows/criarOrdemServico.js';
 
-const { parseArgs, mostrarAjudaCriarOS } = require('./src/cli');
-const criarOrdemDeServico = require('./src/flows/criarOrdemServico');
+const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
 
-if (require.main === module) {
+if (isMain) {
     const args = process.argv.slice(2);
 
     if (args.includes('--help') || args.includes('-h')) {
@@ -29,4 +32,4 @@ if (require.main === module) {
         });
 }
 
-module.exports = { criarOrdemDeServico };
+export { criarOrdemDeServico };

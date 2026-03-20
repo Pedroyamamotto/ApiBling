@@ -1,3 +1,6 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 function parseArgs(argv) {
     const resultado = {
         numeroPedido: '',
@@ -74,8 +77,20 @@ function mostrarAjudaValidarTelas() {
     console.log('Exemplo: node validarTelas.js 9696 --pause');
 }
 
-module.exports = {
+export {
     parseArgs,
     mostrarAjudaCriarOS,
     mostrarAjudaValidarTelas,
 };
+
+const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+
+if (isMain) {
+    const args = process.argv.slice(2);
+
+    if (args.includes('--help') || args.includes('-h') || args.length === 0) {
+        mostrarAjudaCriarOS();
+    } else {
+        console.log(JSON.stringify(parseArgs(args), null, 2));
+    }
+}

@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { BLING_VENDAS_URL, validarVariaveisObrigatorias } from '../config.js';
 import { executarComRetry } from '../utils/core.js';
 import { getHeadlessMode, getChromiumArgs } from '../utils/browser.js';
@@ -14,6 +15,9 @@ import {
     capturarNumeroOSNaLista,
     coletarCamposPreenchidosDaOS,
 } from '../steps/os.js';
+
+const FLOW_FILE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(FLOW_FILE_DIR, '../../../../');
 
 function boolFromEnv(valor, padrao) {
     if (valor === undefined || valor === null || String(valor).trim() === '') {
@@ -58,7 +62,7 @@ function resolverStorageStatePath() {
 
     return path.isAbsolute(valor)
         ? valor
-        : path.resolve(process.cwd(), valor);
+        : path.resolve(PROJECT_ROOT, valor);
 }
 
 async function existeArquivo(filePath) {
