@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import criarOrdemDeServico from './flows/criarOrdemServico.js';
 
 function parseArgs(argv) {
     const resultado = {
@@ -65,11 +66,12 @@ function parseArgs(argv) {
 }
 
 function mostrarAjudaCriarOS() {
-    console.log('Uso: node criarOS.js <numeroPedido|idVenda|urlVenda> [--headless|--headed] [--slow 150] [--debug] [--salvar]');
+    console.log('Uso: node api/automacao/src/cli.js <numeroPedido|idVenda|urlVenda> [--headless|--headed] [--slow 150] [--debug] [--salvar]');
     console.log('Exemplos:');
-    console.log('  node criarOS.js 9713 --salvar');
-    console.log('  node criarOS.js 25328056737 --salvar');
-    console.log('  node criarOS.js https://www.bling.com.br/b/ordem.servicos.php#venda/25328056737 --salvar');
+    console.log('  node api/automacao/src/cli.js 9713 --salvar');
+    console.log('  node api/automacao/src/cli.js 25328056737 --salvar --headed');
+    console.log('  npm.cmd run os:run -- 9713 --salvar --headed');
+    console.log('  npm.cmd run os:cli -- --help');
 }
 
 function mostrarAjudaValidarTelas() {
@@ -91,6 +93,26 @@ if (isMain) {
     if (args.includes('--help') || args.includes('-h') || args.length === 0) {
         mostrarAjudaCriarOS();
     } else {
-        console.log(JSON.stringify(parseArgs(args), null, 2));
+        const config = parseArgs(args);
+
+        if (!config.numeroPedido) {
+            console.error('[ERRO] Informe o numero do pedido. Exemplo: node api/automacao/src/cli.js 9736 --salvar');
+            mostrarAjudaCriarOS();
+            process.exitCode = 1;
+        } else {
+            criarOrdemDeServico(config.numeroPedido, {
+                headless: config.headless,
+                slowMo: config.slowMo,
+                debug: config.debug,
+                salvar: config.salvar,
+            })
+                .then((resultado) => {
+                    console.log(JSON.stringify(resultado, null, 2));
+                })
+                .catch((err) => {
+                    console.error('[ERRO] Falha na automacao:', err.message);
+                    process.exitCode = 1;
+                });
+        }
     }
 }
