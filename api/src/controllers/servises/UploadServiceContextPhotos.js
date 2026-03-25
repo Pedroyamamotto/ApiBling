@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "../../db.js";
-import { saveServiceContextPhotos } from "../../services/servicePhotoStorage.js";
+import { saveServiceContextPhotos, openServiceContextPhotoDownload, openServicePhotoDownload, extractGridFsFileIdFromUrl } from "../../services/servicePhotoStorage.js";
 
 const resolveContextType = (tipoRaw) => {
     const normalized = String(tipoRaw || "").toLowerCase().trim();
@@ -91,6 +91,35 @@ export const uploadServiceContextPhotos = async (req, res) => {
     }
 };
 
+// Função utilitária para filtrar fotos válidas no GridFS
+async function filtrarFotosValidas(fotos, tipo, serviceId, fieldPath, servicosCollection) {
+    const isContext = tipo === "porta_cliente";
+    const checkFn = isContext ? openServiceContextPhotoDownload : openServicePhotoDownload;
+    const result = [];
+    const orfas = [];
+    for (const foto of fotos) {
+        if (!foto?.fileId) continue;
+        try {
+            const exists = await checkFn(foto.fileId);
+            if (exists) {
+                result.push({ ...foto, tipo });
+            } else {
+                orfas.push(foto);
+            }
+        } catch {
+            orfas.push(foto);
+        }
+    }
+    // Remove referências órfãs do banco
+    if (orfas.length > 0 && serviceId && fieldPath && servicosCollection) {
+        await servicosCollection.updateOne(
+            { _id: new ObjectId(serviceId) },
+            { $pull: { [fieldPath]: { fileId: { $in: orfas.map(f => f.fileId) } } } }
+        );
+    }
+    return result;
+}
+
 // GET fotos de contexto do tipo "porta_cliente"
 export const getServiceContextPhotos = async (req, res) => {
     const { id } = req.params;
@@ -104,7 +133,8 @@ export const getServiceContextPhotos = async (req, res) => {
         if (!service) {
             return res.status(404).json({ message: "Servico nao encontrado" });
         }
-        const fotos = (service.fotos_contexto?.porta_cliente || []).map(f => ({ url: f.url, ...f }));
+        const fotosRaw = service.fotos_contexto?.porta_cliente || [];
+        const fotos = await filtrarFotosValidas(fotosRaw, "porta_cliente", id, "fotos_contexto.porta_cliente", servicosCollection);
         return res.status(200).json({ fotos });
     } catch (error) {
         return res.status(500).json({ message: "Erro ao buscar fotos de contexto", detail: error.message });
@@ -124,7 +154,8 @@ export const getServiceInstalacaoPhotos = async (req, res) => {
         if (!service) {
             return res.status(404).json({ message: "Servico nao encontrado" });
         }
-        const fotos = (service.fotos_contexto?.instalacoes || []).map(f => ({ url: f.url, ...f }));
+        const fotosRaw = service.fotos_contexto?.instalacoes || [];
+        const fotos = await filtrarFotosValidas(fotosRaw, "instalacao", id, "fotos_contexto.instalacoes", servicosCollection);
         return res.status(200).json({ fotos });
     } catch (error) {
         return res.status(500).json({ message: "Erro ao buscar fotos de instalacao", detail: error.message });
@@ -144,10 +175,48 @@ export const getServiceAllPhotos = async (req, res) => {
         if (!service) {
             return res.status(404).json({ message: "Servico nao encontrado" });
         }
-        const fotos_porta_cliente = (service.fotos_contexto?.porta_cliente || []).map(f => ({ url: f.url, ...f }));
-        const fotos_instalacoes = (service.fotos_contexto?.instalacoes || []).map(f => ({ url: f.url, ...f }));
-        // fotos_conclusao = fotos_instalacoes
-        const fotos_conclusao = fotos_instalacoes;
+        // Fotos contexto
+        const fotos_porta_cliente = await filtrarFotosValidas(service.fotos_contexto?.porta_cliente || [], "porta_cliente", id, "fotos_contexto.porta_cliente", servicosCollection);
+        const fotos_instalacoes = await filtrarFotosValidas(service.fotos_contexto?.instalacoes || [], "instalacao", id, "fotos_contexto.instalacoes", servicosCollection);
+        // Fotos conclusão/instalação legado (fotos_urls, foto_url)
+        let fotos_urls = [];
+        if (Array.isArray(service.fotos_urls)) {
+            fotos_urls = service.fotos_urls.filter(Boolean);
+        } else if (service.foto_url) {
+            fotos_urls = [service.foto_url];
+        }
+        // Filtrar apenas URLs válidas do GridFS e remover órfãs do banco
+        const fotos_conclusao = [];
+        const orfas_conclusao = [];
+        for (const url of fotos_urls) {
+            const fileId = extractGridFsFileIdFromUrl(url);
+            if (fileId) {
+                try {
+                    const exists = await openServicePhotoDownload(fileId);
+                    if (exists) {
+                        fotos_conclusao.push({ url, fileId, tipo: "conclusao" });
+                    } else {
+                        orfas_conclusao.push(url);
+                    }
+                } catch {
+                    orfas_conclusao.push(url);
+                }
+            }
+        }
+        // Remove referências órfãs de fotos_urls
+        if (orfas_conclusao.length > 0) {
+            await servicosCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $pull: { fotos_urls: { $in: orfas_conclusao } } }
+            );
+            // Se foto_url for órfã, zera
+            if (orfas_conclusao.includes(service.foto_url)) {
+                await servicosCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $unset: { foto_url: "" } }
+                );
+            }
+        }
         return res.status(200).json({
             fotos_porta_cliente,
             fotos_instalacoes,

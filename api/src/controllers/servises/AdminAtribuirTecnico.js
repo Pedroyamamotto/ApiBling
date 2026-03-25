@@ -48,9 +48,11 @@ function serializeService(service, fallbackId = null) {
             ? _id.toHexString()
             : fallbackId;
 
+    // Garante que ordem_de_servico sempre exista, mesmo se null
     return {
         id: resolvedId,
         ...rest,
+        ordem_de_servico: typeof rest.ordem_de_servico !== "undefined" ? rest.ordem_de_servico : null,
     };
 }
 
@@ -79,13 +81,14 @@ async function findTecnicoById(usuariosCollection, tecnicoId) {
     return null;
 }
 
-export function setAutomationRunnerForTests(runner) {
-    // Mantido apenas para compatibilidade com testes legados.
-    return runner;
-}
 
+// Permite injeção de automação nos testes
+let automationRunner = null;
+export function setAutomationRunnerForTests(runner) {
+    automationRunner = runner;
+}
 export function resetAutomationRunnerForTests() {
-    // Mantido apenas para compatibilidade com testes legados.
+    automationRunner = null;
 }
 
 export const adminAtribuirTecnico = async (req, res) => {
@@ -136,17 +139,14 @@ export const adminAtribuirTecnico = async (req, res) => {
             status: "atribuido",
             updated_at: new Date(),
         };
-
         if (observacoes !== undefined) {
             updateData.observacoes = observacoes;
         }
 
         const numeroPedido = service.numero_pedido;
-        logStructured("info", "automacao_bling_disabled", {
-            serviceId: id,
-            numeroPedido: String(numeroPedido || ""),
-            tecnico: tecnicoNome,
-        });
+
+        // Integração de automação removida: atribuição é apenas local
+        let ordemDeServico = null;
 
         await servicosCollection.updateOne(
             { _id: new ObjectId(id) },
@@ -160,26 +160,37 @@ export const adminAtribuirTecnico = async (req, res) => {
             serviceId: id,
             numeroPedido: String(numeroPedido),
             tecnico: tecnicoNome,
-            automacaoDesativada: true,
+            automacaoDesativada: !ordemDeServico,
         });
 
         return res.status(200).json({
             success: true,
-            message: "Técnico atribuído com sucesso! (automação desativada)",
+            message: ordemDeServico
+                ? "Técnico atribuído e ordem de serviço gerada com sucesso!"
+                : "Técnico atribuído com sucesso! (automação desativada)",
             service: serializeService(updatedService, id),
             tecnico_utilizado: tecnicoNome,
-            automacao: {
-                desativada: true,
-                motivo: "Automação do Bling desativada nesta rota.",
-            },
+            automacao: ordemDeServico
+                ? {
+                    desativada: false,
+                    ordemDeServico,
+                    motivo: null,
+                }
+                : {
+                    desativada: true,
+                    motivo: "Automação do Bling desativada nesta rota.",
+                },
         });
     } catch (error) {
         console.error("Erro ao atribuir técnico:", error);
+        if (error && error.stack) {
+            console.error("Stack:", error.stack);
+        }
         logStructured("error", "admin_atribuir_tecnico_failed", {
             serviceId: id,
             error: error?.message || "erro interno",
             stack: error?.stack || null,
         });
-        return res.status(500).json({ message: "Erro interno no servidor" });
+        return res.status(500).json({ message: error?.message || "Erro interno no servidor" });
     }
 };

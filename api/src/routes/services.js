@@ -1,8 +1,11 @@
+
 import express from "express";
+const router = express.Router();
 import {
     uploadServiceConclusionPhotos,
     uploadServiceContextPhotos,
 } from "../middlewares/upload.js";
+import multer from "multer";
 import { requireAdmin } from "../middlewares/requireAdmin.js";
 import { requireAdminOrGerente } from "../middlewares/requireAdminOrGerente.js";
 import {
@@ -30,8 +33,150 @@ import {
     getServiceInstalacaoPhotos,
     getServiceAllPhotos,
 } from "../controllers/servises/index.js";
+import { uploadComprovantePagamento, getComprovantePagamento } from "../controllers/servises/ComprovantePagamento.js";
+import { removeServicePhoto, desconcluirService } from "../controllers/servises/AdminServiceActions.js";
 
-const router = express.Router();
+// ...existing code...
+// Multer para upload de comprovante (1 imagem)
+const comprovanteUpload = multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 10 * 1024 * 1024 } });
+
+/**
+ * @swagger
+ * /api/admin/services/{id}/fotos/{tipo}/{fileId}:
+ *   delete:
+ *     summary: Remover foto de serviço (admin)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do serviço
+ *       - in: path
+ *         name: tipo
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [porta_cliente, instalacao, conclusao]
+ *         description: Tipo da foto
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do arquivo no GridFS
+ *     responses:
+ *       200:
+ *         description: Foto removida com sucesso
+ *       404:
+ *         description: Serviço ou foto não encontrada
+ */
+router.delete(
+    "/admin/services/:id/fotos/:tipo/:fileId",
+    requireAdmin,
+    removeServicePhoto
+);
+
+/**
+ * @swagger
+ * /api/admin/services/{id}/desconcluir:
+ *   post:
+ *     summary: Desconcluir serviço (remover conclusão)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do serviço
+ *     responses:
+ *       200:
+ *         description: Serviço desconcluído com sucesso
+ *       404:
+ *         description: Serviço não encontrado
+ */
+router.post(
+    "/admin/services/:id/desconcluir",
+    requireAdmin,
+    desconcluirService
+);
+
+/**
+ * @swagger
+ * /api/admin/services/{id}/comprovante:
+ *   post:
+ *     summary: Upload de comprovante de pagamento (imagem)
+ *     tags: [Admin]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do serviço
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - comprovante
+ *             properties:
+ *               comprovante:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Comprovante salvo com sucesso
+ *       400:
+ *         description: Upload inválido
+ *       404:
+ *         description: Serviço não encontrado
+ */
+router.post(
+    "/admin/services/:id/comprovante",
+    requireAdmin,
+    comprovanteUpload.array("comprovante", 1),
+    uploadComprovantePagamento
+);
+
+/**
+ * @swagger
+ * /api/admin/services/{id}/comprovante:
+ *   get:
+ *     summary: Exibir comprovante de pagamento do serviço
+ *     tags: [Admin]
+ *     security:
+ *       - AdminKey: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do serviço
+ *     responses:
+ *       200:
+ *         description: Dados do comprovante
+ *       404:
+ *         description: Comprovante não encontrado
+ */
+router.get(
+    "/admin/services/:id/comprovante",
+    requireAdmin,
+    getComprovantePagamento
+);
+
+
 
 /**
  * @swagger
@@ -377,6 +522,7 @@ router.get("/gerente/services", requireAdminOrGerente, getServicesAdminLista);
  * /api/services/{id}/admin/atribuir:
  *   patch:
  *     summary: Atribuir técnico e agendar visita (admin)
+ *     description: Atualiza o técnico, data e hora agendada de um serviço. Não há mais integração automática com sistemas externos ou geração de ordem de serviço.
  *     tags: [Admin]
  *     security:
  *       - AdminKey: []

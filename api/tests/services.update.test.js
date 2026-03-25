@@ -245,6 +245,8 @@ beforeEach(async () => {
             };
         },
     });
+    // Mock de automação deve ser setado ANTES do app
+    setAutomationRunnerForTests(null); // Garante estado limpo
     app = createApp();
 });
 
