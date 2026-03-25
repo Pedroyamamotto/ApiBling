@@ -1,4 +1,3 @@
-
 import express from "express";
 const router = express.Router();
 import {
@@ -35,8 +34,8 @@ import {
 } from "../controllers/servises/index.js";
 import { uploadComprovantePagamento, getComprovantePagamento } from "../controllers/servises/ComprovantePagamento.js";
 import { removeServicePhoto, desconcluirService } from "../controllers/servises/AdminServiceActions.js";
+import { updateServicoCompleto } from "../controllers/servises/updateServicoCompleto.js";
 
-// ...existing code...
 // Multer para upload de comprovante (1 imagem)
 const comprovanteUpload = multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 10 * 1024 * 1024 } });
 
@@ -175,8 +174,6 @@ router.get(
     requireAdmin,
     getComprovantePagamento
 );
-
-
 
 /**
  * @swagger
@@ -1137,5 +1134,8 @@ router.patch("/services/:id/nao-realizado", marcarNaoRealizado);
  *         description: Serviço não encontrado
  */
 router.patch("/services/:id/checkin", checkinService);
+
+// Rota para editar serviço e cliente juntos
+router.put("/servicos/editar-completo/:id", updateServicoCompleto);
 
 export default router;
