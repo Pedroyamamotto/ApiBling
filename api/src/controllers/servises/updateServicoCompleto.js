@@ -12,7 +12,7 @@ import { updateCliente as updateClienteController } from "../clientes/UpdateClie
  */
 export const updateServicoCompleto = async (req, res) => {
     const { id } = req.params; // pedido_id
-    const {
+    let {
         descricao_servico,
         status,
         data_agendada,
@@ -22,12 +22,39 @@ export const updateServicoCompleto = async (req, res) => {
         nome_cliente,
         telefone_cliente,
         endereco_completo,
+        nomeAntigo,
+        nomeNovo,
         ...rest
     } = req.body;
 
     try {
         const db = await getDb();
         const servicosCollection = db.collection("servicos");
+
+        // Se cliente_id não veio, buscar pelo nomeAntigo (caso fornecido)
+        if (!cliente_id || typeof cliente_id !== 'string' || !ObjectId.isValid(cliente_id)) {
+            const db = await getDb();
+            const clientesCollection = db.collection("clientes");
+            let clienteDoc = null;
+            if (nomeAntigo && typeof nomeAntigo === 'string' && nomeAntigo.trim() !== '') {
+                // Busca insensível a case e ignorando espaços extras
+                const nomeAntigoRegex = new RegExp(`^${nomeAntigo.trim().replace(/\s+/g, ' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+                clienteDoc = await clientesCollection.findOne({ nome: nomeAntigoRegex });
+            } else {
+                // fallback: buscar pelo serviço
+                const servicoDoc = await servicosCollection.findOne({ pedido_id: String(id) });
+                if (servicoDoc && (servicoDoc.cliente_id || (servicoDoc.cliente && (servicoDoc.cliente._id || servicoDoc.cliente.id || servicoDoc.cliente.$oid)))) {
+                    cliente_id = String(
+                        servicoDoc.cliente_id ||
+                        (servicoDoc.cliente && (servicoDoc.cliente._id || servicoDoc.cliente.id || servicoDoc.cliente.$oid)) ||
+                        ''
+                    );
+                }
+            }
+            if (clienteDoc && clienteDoc._id) {
+                cliente_id = String(clienteDoc._id);
+            }
+        }
 
         // Atualiza serviço
         const updateServico = {};
@@ -43,7 +70,7 @@ export const updateServicoCompleto = async (req, res) => {
             { $set: updateServico }
         );
 
-        // Atualiza cliente usando o controller padrão, se cliente_id enviado e válido
+        // Atualiza cliente usando o controller padrão, se cliente_id válido
         let clienteResult = null;
         if (
             cliente_id &&
@@ -51,16 +78,26 @@ export const updateServicoCompleto = async (req, res) => {
             cliente_id.trim() !== '' &&
             ObjectId.isValid(cliente_id)
         ) {
-            // Monta objeto de atualização sem sobrescrever campos com string vazia
+            // Busca o cliente atual para garantir que o nome bate com nomeAntigo (se fornecido)
+            const db = await getDb();
+            const clientesCollection = db.collection("clientes");
+            const clienteAtual = await clientesCollection.findOne({ _id: new ObjectId(cliente_id) });
+            if (nomeAntigo && clienteAtual && clienteAtual.nome !== nomeAntigo.trim()) {
+                return res.status(400).json({ error: "Nome antigo não confere com o cliente encontrado." });
+            }
+            // Permitir atualização só do nome
             const clienteBody = {};
-            if (nome_cliente && nome_cliente.trim() !== '') clienteBody.nome = nome_cliente;
+            if (nomeNovo && nomeNovo.trim() !== '') {
+                clienteBody.nome = nomeNovo.trim();
+            }
+            // Permitir update mesmo se só nomeNovo vier
             if (telefone_cliente && telefone_cliente.trim() !== '') clienteBody.telefone = telefone_cliente;
             if (endereco_completo && endereco_completo.trim() !== '') clienteBody.endereco = endereco_completo;
-            // Inclui outros campos válidos de rest
             for (const [k, v] of Object.entries(rest)) {
                 if (typeof v === 'string' && v.trim() === '') continue;
                 if (v !== undefined && v !== null) clienteBody[k] = v;
             }
+            // Só faz update se pelo menos nomeNovo vier
             if (Object.keys(clienteBody).length > 0) {
                 const fakeReq = {
                     params: { id: cliente_id },
