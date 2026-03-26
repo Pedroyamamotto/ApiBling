@@ -109,79 +109,73 @@ export const getServicesAdminLista = async (req, res) => {
         const clienteMap = new Map(clientes.map((c) => [c._id.toString(), c]));
         const tecnicoMap = new Map(tecnicos.map((t) => [t._id.toString(), t]));
 
-        const servicesFormatted = services.map((service) => {
-            const serviceId = service._id.toString();
+        // Função para formatar datas
+        const formatDate = (date) => {
+            if (!date) return '';
+            try {
+                const d = new Date(date);
+                if (isNaN(d.getTime())) return '';
+                return d.toLocaleDateString('pt-BR');
+            } catch {
+                return '';
+            }
+        };
 
-            const cliente = clienteMap.get(String(service.cliente_id)) || null;
-            const tecnico = tecnicoMap.get(String(service.tecnico_id)) || null;
+        const servicesFormatted = services.map((service) => {
+            const serviceId = service._id?.toString?.() || '';
+            const cliente = clienteMap.get(String(service.cliente_id)) || {};
+            const tecnico = tecnicoMap.get(String(service.tecnico_id)) || {};
             const fotosUrls = Array.isArray(service.fotos_urls) && service.fotos_urls.length > 0
                 ? service.fotos_urls.filter(Boolean)
-                : service.foto_url
-                    ? [service.foto_url]
-                    : [];
+                : service.foto_url ? [service.foto_url] : [];
             const fotosContexto = service.fotos_contexto && typeof service.fotos_contexto === "object"
-                ? service.fotos_contexto
-                : {};
+                ? service.fotos_contexto : {};
             const fotosPortaCliente = Array.isArray(fotosContexto.porta_cliente)
-                ? fotosContexto.porta_cliente.filter(Boolean)
-                : [];
+                ? fotosContexto.porta_cliente.filter(Boolean) : [];
             const fotosInstalacoes = Array.isArray(fotosContexto.instalacoes)
-                ? fotosContexto.instalacoes.filter(Boolean)
-                : [];
+                ? fotosContexto.instalacoes.filter(Boolean) : [];
 
-            const enderecoCliente = cliente
-                                ? [
-                                            cliente.rua,
-                                            cliente.numero,
-                                            cliente.complemento,
-                                            cliente.bairro,
-                                            cliente.cidade,
-                                            cliente.estado,
-                                    ]
-                                            .filter(Boolean)
-                                            .join(", ")
-                                : null;
+            // Endereço amigável
+            const enderecoCliente = [
+                cliente.rua,
+                cliente.numero,
+                cliente.complemento,
+                cliente.bairro,
+                cliente.cidade,
+                cliente.estado,
+            ].filter(Boolean).join(', ');
 
             return {
-                ordem_de_servico: service.ordem_de_servico ?? null,
                 id: serviceId,
-                numero_pedido: service.numero_pedido ?? null,
-                pedido_id: service.pedido_id ?? null,
-                status: service.status,
-                data_agendada: service.data_agendada ?? null,
-                hora_agendada: service.hora_agendada ?? null,
-                descricao_servico: service.descricao_servico ?? null,
-                observacoes: service.observacoes ?? null,
-                created_at: service.created_at ?? null,
-                updated_at: service.updated_at ?? null,
-
-                // Cliente enriched
-                cliente_id: service.cliente_id ?? null,
-                nome_cliente: cliente?.nome ?? null,
-                telefone_cliente: cliente?.celular || cliente?.telefone || null,
-                endereco_cliente: enderecoCliente,
-
-                // Técnico enriched
-                tecnico_id: service.tecnico_id ?? null,
-                nome_tecnico: tecnico?.nome ?? null,
-                telefone_tecnico: tecnico?.telefone ?? null,
-
-                // Finalização
-                checkin_data: service.checkin_data ?? null,
-                concluido_em: service.concluido_em ?? null,
-                checklist: Array.isArray(service.checklist) ? service.checklist : [],
-                foto_url: service.foto_url ?? fotosUrls[0] ?? null,
-                fotos_urls: fotosUrls,
-                fotos_contexto: {
-                    porta_cliente: fotosPortaCliente,
-                    instalacoes: fotosInstalacoes,
-                },
-                fotos_porta_cliente_urls: fotosPortaCliente.map((item) => item?.url).filter(Boolean),
-                fotos_instalacoes_urls: fotosInstalacoes.map((item) => item?.url).filter(Boolean),
-                assinatura_url: service.assinatura_url ?? null,
-                motivo_nao_realizacao:
-                    service.motivo_nao_realizacao || service.nao_realizado_motivo || null,
-                ordem_de_servico: service.ordem_de_servico ?? null,
+                cliente: cliente.nome || '',
+                telefone: cliente.celular || cliente.telefone || '',
+                endereco: enderecoCliente || '',
+                descricao: service.descricao_servico || service.descricao || '',
+                status: service.status || '',
+                tecnico: tecnico.nome || 'Não atribuído',
+                tecnicoId: service.tecnico_id || '',
+                data: formatDate(service.data_agendada || service.data),
+                hora: service.hora_agendada || service.hora || '',
+                dataConclusao: formatDate(service.concluido_em || service.data_conclusao),
+                horaConclusao: '',
+                numeroPedido: service.numero_pedido || '',
+                pedidoId: service.pedido_id || '',
+                numeroOrdemServico: service.ordem_de_servico || '',
+                motivo: service.motivo_nao_realizacao || service.nao_realizado_motivo || '',
+                fotoUri: service.foto_url || fotosUrls[0] || '',
+                fotosContextoUris: [...fotosPortaCliente, ...fotosInstalacoes].map(f => f?.url).filter(Boolean),
+                assinaturaUri: service.assinatura_url || '',
+                assinadoPor: service.assinado_por || '',
+                checklist: Array.isArray(service.checklist) ? service.checklist.map(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        return {
+                            nome: item.nome || '',
+                            status: item.status || '',
+                            observacao: item.observacao || ''
+                        };
+                    }
+                    return item;
+                }) : [],
             };
         });
 
