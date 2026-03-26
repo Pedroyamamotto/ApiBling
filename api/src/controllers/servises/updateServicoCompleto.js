@@ -43,32 +43,43 @@ export const updateServicoCompleto = async (req, res) => {
             { $set: updateServico }
         );
 
-        // Atualiza cliente usando o controller padrão, se cliente_id enviado
+        // Atualiza cliente usando o controller padrão, se cliente_id enviado e válido
         let clienteResult = null;
-        if (cliente_id && ObjectId.isValid(cliente_id)) {
-            // Monta um req/res fake para reusar updateCliente
-            const fakeReq = {
-                params: { id: cliente_id },
-                body: {
-                    nome: nome_cliente,
-                    telefone: telefone_cliente,
-                    endereco: endereco_completo,
-                    ...rest
-                }
-            };
-            let fakeResData = {};
-            const fakeRes = {
-                status: (code) => {
-                    fakeResData.status = code;
-                    return fakeRes;
-                },
-                json: (data) => {
-                    fakeResData.data = data;
-                    return fakeResData;
-                }
-            };
-            await updateClienteController(fakeReq, fakeRes);
-            clienteResult = fakeResData;
+        if (
+            cliente_id &&
+            typeof cliente_id === 'string' &&
+            cliente_id.trim() !== '' &&
+            ObjectId.isValid(cliente_id)
+        ) {
+            // Monta objeto de atualização sem sobrescrever campos com string vazia
+            const clienteBody = {};
+            if (nome_cliente && nome_cliente.trim() !== '') clienteBody.nome = nome_cliente;
+            if (telefone_cliente && telefone_cliente.trim() !== '') clienteBody.telefone = telefone_cliente;
+            if (endereco_completo && endereco_completo.trim() !== '') clienteBody.endereco = endereco_completo;
+            // Inclui outros campos válidos de rest
+            for (const [k, v] of Object.entries(rest)) {
+                if (typeof v === 'string' && v.trim() === '') continue;
+                if (v !== undefined && v !== null) clienteBody[k] = v;
+            }
+            if (Object.keys(clienteBody).length > 0) {
+                const fakeReq = {
+                    params: { id: cliente_id },
+                    body: clienteBody
+                };
+                let fakeResData = {};
+                const fakeRes = {
+                    status: (code) => {
+                        fakeResData.status = code;
+                        return fakeRes;
+                    },
+                    json: (data) => {
+                        fakeResData.data = data;
+                        return fakeResData;
+                    }
+                };
+                await updateClienteController(fakeReq, fakeRes);
+                clienteResult = fakeResData;
+            }
         }
 
         if (servicoResult.matchedCount === 0) {
