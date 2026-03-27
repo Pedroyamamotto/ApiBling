@@ -13,8 +13,8 @@ export const createService = async (req, res) => {
         numero_pedido: yup.string().required(),
         pedido_id: yup.string().required(),
         cliente_id: yup.string().required(),
-        tecnico_id: yup.string().required(),
-        status: yup.string().required(),
+        tecnico_id: yup.string().nullable(),
+        status: yup.string().nullable(),
         data_agendada: yup.mixed().test('is-date', 'data_agendada inválida', v => v === null || !v || !isNaN(new Date(v))) .required(),
         hora_agendada: yup.string().required(),
         descricao_servico: yup.string().required(),
@@ -51,12 +51,23 @@ export const createService = async (req, res) => {
         updated_at,
     } = servicePayload;
 
+    // Se não vier tecnico_id, define como null
+    if (typeof tecnico_id === 'undefined') {
+        tecnico_id = null;
+    }
+
+    // Garante que status sempre será 'aguardando' ao criar
+    status = status && typeof status === 'string' && status.trim() !== '' ? status : 'aguardando';
+
+    // Garante que ordem_de_servico seja null ou valor válido (nunca string vazia ou número aleatório)
+    if (!ordem_de_servico || typeof ordem_de_servico !== 'string' || ordem_de_servico.trim() === '') {
+        ordem_de_servico = null;
+    }
+
     try {
         const db = await getDb();
         const servicosCollection = db.collection("servicos");
-        // ordem_de_servico sempre começa vazio/null
-        ordem_de_servico = ordem_de_servico || null;
-        
+
         const result = await servicosCollection.insertOne({
             numero_pedido: String(numero_pedido),
             pedido_id,
@@ -79,8 +90,7 @@ export const createService = async (req, res) => {
 
         return res.status(201).json({
             message: "Serviço criado com sucesso!",
-            serviceId: result.insertedId,
-            ordem_de_servico: ordem_de_servico || null,
+            serviceId: result.insertedId
         });
     } catch (error) {
         console.error("Erro ao criar serviço:", error);
