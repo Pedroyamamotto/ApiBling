@@ -1,3 +1,42 @@
+import { openServicePhotoDownload } from "../../services/servicePhotoStorage.js";
+// GET /api/admin/services/comprovante/:id => retorna a imagem do comprovante
+export const getComprovantePagamentoImage = async (req, res) => {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "ID do serviço inválido" });
+    }
+    try {
+        const db = await getDb();
+        const servicosCollection = db.collection("servicos");
+        const service = await servicosCollection.findOne({ _id: new ObjectId(id) });
+        if (!service || !service.comprovante_pagamento || !service.comprovante_pagamento.fileId) {
+            return res.status(404).json({ message: "Comprovante não encontrado" });
+        }
+        const photoDownload = await openServicePhotoDownload(service.comprovante_pagamento.fileId);
+        if (!photoDownload) {
+            return res.status(404).json({ message: "Arquivo do comprovante não encontrado" });
+        }
+        const { file, stream } = photoDownload;
+        res.setHeader("Content-Type", file.contentType || "application/octet-stream");
+        if (typeof file.length === "number") {
+            res.setHeader("Content-Length", String(file.length));
+        }
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        stream.on("error", (error) => {
+            console.error("Erro ao transmitir comprovante do serviço do MongoDB:", {
+                fileId: service.comprovante_pagamento.fileId,
+                message: error.message,
+            });
+            if (!res.headersSent) {
+                return res.status(500).json({ message: "Erro ao carregar comprovante" });
+            }
+            res.destroy(error);
+        });
+        stream.pipe(res);
+    } catch (error) {
+        return res.status(500).json({ message: "Erro ao buscar comprovante", detail: error.message });
+    }
+};
 import { ObjectId } from "mongodb";
 import { getDb } from "../../db.js";
 import { saveServicePhotos } from "../../services/servicePhotoStorage.js";

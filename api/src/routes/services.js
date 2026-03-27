@@ -1,5 +1,10 @@
 import express from "express";
 const router = express.Router();
+
+// GET comprovante de pagamento (imagem)
+import { getComprovantePagamentoImage } from "../controllers/servises/ComprovantePagamento.js";
+// Rota para exibir a imagem do comprovante de pagamento
+router.get("/admin/services/comprovante/:id", getComprovantePagamentoImage);
 import {
     uploadServiceConclusionPhotos,
     uploadServiceContextPhotos,
