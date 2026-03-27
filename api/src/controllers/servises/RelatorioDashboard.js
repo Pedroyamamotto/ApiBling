@@ -40,11 +40,59 @@ export const relatorioDashboard = async (req, res) => {
 
         // Técnicos
         const tecnicos = await usuariosCollection.countDocuments({ typeUser: "tecnico" });
-        // Serviços concluídos por técnico
-        const servicosPorTecnico = await servicosCollection.aggregate([
-            { $match: { status: "concluido", tecnico_id: { $exists: true, $ne: null } } },
-            { $group: { _id: "$tecnico_id", concluidos: { $sum: 1 } } },
+        // Serviços concluídos, ativos e total por técnico
+        const servicosPorTecnicoRaw = await servicosCollection.aggregate([
+            { $match: { tecnico_id: { $exists: true, $ne: null } } },
+            {
+                $group: {
+                    _id: "$tecnico_id",
+                    concluidos: {
+                        $sum: { $cond: [{ $eq: ["$status", "concluido"] }, 1, 0] }
+                    },
+                    ativos: {
+                        $sum: { $cond: [{ $in: ["$status", ["aguardando", "atribuido"]] }, 1, 0] }
+                    },
+                    total_tecnico: { $sum: 1 }
+                }
+            }
         ]).toArray();
+
+        // Buscar dados dos técnicos na tabela usuários
+        const usuarios = await usuariosCollection.find({ typeUser: "tecnico" }).toArray();
+        const usuarioMap = new Map(usuarios.map(u => [String(u._id), u]));
+
+        // Montar array final, incluindo técnicos sem cadastro
+        const servicosPorTecnico = servicosPorTecnicoRaw
+            .filter(item => String(item._id).trim() !== "")
+            .map(item => {
+                const user = usuarioMap.get(String(item._id));
+                return {
+                    _id: item._id,
+                    nome: user ? user.nome : "Desconhecido",
+                    concluidos: item.concluidos,
+                    ativos: item.ativos,
+                    total_tecnico: item.total_tecnico,
+                    motivo: user ? undefined : "Técnico não cadastrado na tabela usuários"
+                };
+            });
+
+        // Adicionar técnicos sem serviços (apenas cadastrados)
+        usuarios.forEach(user => {
+            if (!servicosPorTecnico.find(t => String(t._id) === String(user._id))) {
+                servicosPorTecnico.push({
+                    _id: user._id,
+                    nome: user.nome,
+                    concluidos: 0,
+                    ativos: 0,
+                    total_tecnico: 0,
+                    motivo: "Técnico cadastrado, mas sem serviços registrados"
+                });
+            }
+        });
+
+        // Adicionar entrada para serviços sem técnico
+        const semTecnicoCount = await servicosCollection.countDocuments({ $or: [ { tecnico_id: { $exists: false } }, { tecnico_id: null }, { tecnico_id: "" } ] });
+        // Não adicionar nada para serviços sem técnico atribuído
 
         return res.status(200).json({
             aguardando,
