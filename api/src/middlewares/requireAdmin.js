@@ -1,6 +1,7 @@
 export const requireAdmin = (req, res, next) => {
     const adminApiKey = process.env.ADMIN_API_KEY;
-    const providedApiKey = req.headers["x-admin-key"];
+    // Aceita tanto x-admin-key quanto x-api-key
+    const providedApiKey = req.headers["x-admin-key"] || req.headers["x-api-key"];
     const userType = req.headers["x-user-type"];
 
     if (adminApiKey) {

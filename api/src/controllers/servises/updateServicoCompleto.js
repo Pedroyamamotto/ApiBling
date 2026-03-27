@@ -59,7 +59,12 @@ export const updateServicoCompleto = async (req, res) => {
         // Atualiza serviço
         const updateServico = {};
         if (descricao_servico !== undefined) updateServico.descricao_servico = descricao_servico;
-        if (status !== undefined) updateServico.status = status;
+        // Se status não vier, mas concluido_em vier, marca como concluido
+        if (status !== undefined) {
+            updateServico.status = status;
+        } else if (req.body.concluido_em || req.body.finalizado || req.body.status === undefined) {
+            updateServico.status = "concluido";
+        }
         if (data_agendada !== undefined && data_agendada !== "") updateServico.data_agendada = new Date(data_agendada);
         if (hora_agendada !== undefined) updateServico.hora_agendada = hora_agendada;
         if (observacoes !== undefined) updateServico.observacoes = observacoes;

@@ -29,11 +29,12 @@ export const relatorioDashboard = async (req, res) => {
             if (item._id) countMap[item._id] = item.count;
         }
 
+        // Padronização dos status
         const aguardando = countMap["aguardando"] || 0;
-        const atribuidos = countMap["atribuido"] || countMap["agendado"] || 0;
+        const atribuidos = countMap["atribuido"] || 0;
         const concluidos = countMap["concluido"] || 0;
         const naoRealizados = countMap["nao_realizado"] || 0;
-        const total = Object.values(countMap).reduce((sum, v) => sum + v, 0);
+        const total = aguardando + atribuidos + concluidos + naoRealizados;
         const taxaConclusao = total > 0 ? Math.round((concluidos / total) * 100) : 0;
 
         // Técnicos
