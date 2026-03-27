@@ -34,7 +34,8 @@ export const relatorioDashboard = async (req, res) => {
         const atribuidos = countMap["atribuido"] || 0;
         const concluidos = countMap["concluido"] || 0;
         const naoRealizados = countMap["nao_realizado"] || 0;
-        const total = aguardando + atribuidos + concluidos + naoRealizados;
+        // Busca o total real de serviços no banco
+        const total = await servicosCollection.countDocuments({});
         const taxaConclusao = total > 0 ? Math.round((concluidos / total) * 100) : 0;
 
         // Técnicos
