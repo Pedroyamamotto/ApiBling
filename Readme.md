@@ -1,4 +1,4 @@
-# 🔧 ApiBling - Sistema de Gestão de Serviços Técnicos Yamamoto
+# 🔧 YamaServerAPI - Sistema de Gestão de Serviços Técnicos Yamamoto
 
 <div align="center">
 
@@ -35,7 +35,7 @@
 
 ## 🎯 Sobre o Projeto
 
-O **ApiBling** é uma API REST robusta desenvolvida pela **Yamamoto** para gestão completa de serviços técnicos, pedidos e clientes da Yamamoto. A aplicação oferece controle total sobre o ciclo de vida dos serviços, desde a criação do pedido até a finalização com checklist, fotos e assinatura digital do cliente.
+O **YamaServerAPI** é uma API REST robusta desenvolvida pela **Yamamoto** para gestão completa de serviços técnicos, pedidos e clientes da Yamamoto. A aplicação oferece controle total sobre o ciclo de vida dos serviços, desde a criação do pedido até a finalização com checklist, fotos e assinatura digital do cliente.
 
 ### 🎨 Características Principais
 
@@ -275,8 +275,8 @@ Antes de começar, certifique-se de ter instalado:
 
 ### 1. Clone o repositório
 ```bash
-git clone https://github.com/yamamoto/apibling.git
-cd apibling
+git clone https://github.com/yamamoto/YamaServerAPI.git
+cd YamaServerAPI
 ```
 
 ### 2. Instale as dependências
@@ -297,8 +297,8 @@ Edite o arquivo `.env` com suas configurações:
 
 ```env
 # Configurações do Banco de Dados
-MONGODB_URI=mongodb://localhost:27017/apibling
-MONGODB_DB=apibling_db
+MONGODB_URI=mongodb://localhost:27017/yamaserverapi
+MONGODB_DB=yamaserverapi_db
 
 # Configurações do Servidor
 PORT=3000
@@ -394,7 +394,7 @@ A API estará disponível em: `http://localhost:3000`
 ## 📁 Estrutura do Projeto
 
 ```
-ApiBling/
+YamaServerAPI/
 ├── 📁 api/
 │   ├── 📄 db.js                    # Conexão MongoDB
 │   ├── 📄 idex.js                  # Entry point
@@ -628,7 +628,7 @@ Contribuições são sempre bem-vindas! Para contribuir:
 
 ## 🐛 Reportar Bugs
 
-Encontrou um bug? Abra uma [issue](https://github.com/yamamoto/apibling/issues) com:
+Encontrou um bug? Abra uma [issue](https://github.com/yamamoto/YamaServerAPI/issues) com:
 
 - ✅ Descrição clara do problema
 - ✅ Passos para reproduzir
@@ -639,16 +639,16 @@ Encontrou um bug? Abra uma [issue](https://github.com/yamamoto/apibling/issues) 
 ## 📞 Suporte
 
 - 📧 Email: suporte@yamamoto.com.br
-- 🐛 Issues: [GitHub Issues](https://github.com/yamamoto/apibling/issues)
+- 🐛 Issues: [GitHub Issues](https://github.com/yamamoto/YamaServerAPI/issues)
 
 ## 🗺️ Roadmap
 
-- [ ] Implementar upload real de arquivos (Multer)
+- [x] Implementar upload real de arquivos (Multer)
 - [ ] Adicionar autenticação JWT
-- [ ] Criar dashboard de métricas
+- [x] Criar dashboard de métricas
 - [ ] Implementar notificações push
 - [ ] Adicionar relatórios em PDF
-- [ ] Criar sistema de permissões por role
+- [x] Criar sistema de permissões por role
 - [ ] Implementar busca geoespacial (técnico mais próximo)
 - [ ] Adicionar testes automatizados (Jest)
 
